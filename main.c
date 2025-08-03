@@ -8,17 +8,18 @@
 #include <errno.h>
 #include <signal.h>
 #include <string.h>
+#include <sys/mount.h>
 
-pid_t ns_clone() {
+pid_t clone() {
 	struct clone_args args;
 	memset(&args, 0, sizeof(args));
-	args.flags = CLONE_NEWNS;
+	args.flags = CLONE_NEWPID | CLONE_NEWNS;
 	args.exit_signal = SIGCHLD;
 	return syscall(SYS_clone3, &args, sizeof(args));
 }
 
 int main() {
-	pid_t pid = ns_clone();
+	pid_t pid = clone();
 	if (pid < 0) {
 		perror("clone3");
 		return 1;
@@ -43,8 +44,16 @@ int main() {
 	        perror("setsid");
 	        return 1;
 	}
+
+	if (mount(NULL, "/", NULL, MS_REC | MS_PRIVATE, NULL) < 0) {
+	    perror("mount MS_PRIVATE failed");
+	    return 1;
+	}
+
+	umount("/proc");
+	mount("proc", "/proc", "proc", 0, NULL);
 	
 	execl("/bin/bash", "bash", (char *)NULL);
-	return 0;
+	// Unreachable
 }
 
