@@ -2,34 +2,49 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <sys/syscall.h>
+#include <linux/sched.h>
+#include <linux/types.h>
+#include <errno.h>
+#include <signal.h>
+#include <string.h>
+
+pid_t ns_clone() {
+	struct clone_args args;
+	memset(&args, 0, sizeof(args));
+	args.flags = CLONE_NEWNS;
+	args.exit_signal = SIGCHLD;
+	return syscall(SYS_clone3, &args, sizeof(args));
+}
 
 int main() {
-    printf("start\n");
-
-    pid_t pid = fork();
-    if (pid < 0) return 1;
-    if (pid > 0) return 0;
-
-    int fd = open("/dev/tty9", O_RDWR);
-    if (fd < 0) {
-	    printf("open failed\n");
-	    return 1;
-    }
-
-    for (int i = 0; i <= 2; i++) {
-        if (dup2(fd, i) < 0) {
-        	printf("dup failed");
-        	return 1;
-        }
-    }
-    if (fd > 2) close(fd);
-
-    if (setsid() < 0) {
-            printf("setsid failed\n");
-            return 1;
-    }
-
-    execl("/bin/bash", "bash", (char *)NULL);
-    return 0;
+	pid_t pid = ns_clone();
+	if (pid < 0) {
+		perror("clone3");
+		return 1;
+	}
+	if (pid > 0) return 0;
+	
+	int fd = open("/dev/tty9", O_RDWR);
+	if (fd < 0) {
+	        perror("open");
+	        return 1;
+	}
+	
+	for (int i = 0; i <= 2; i++) {
+	    if (dup2(fd, i) < 0) {
+	    	perror("dup2");
+	    	return 1;
+	    }
+	}
+	if (fd > 2) close(fd);
+	
+	if (setsid() < 0) {
+	        perror("setsid");
+	        return 1;
+	}
+	
+	execl("/bin/bash", "bash", (char *)NULL);
+	return 0;
 }
 
