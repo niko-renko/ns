@@ -14,8 +14,6 @@
 #include <sys/stat.h>
 #include <sys/mount.h>
 
-#include <dirent.h>
-
 pid_t clone() {
 	struct clone_args args;
 	memset(&args, 0, sizeof(args));
@@ -34,19 +32,6 @@ int main() {
 	if (pid < 0)
 		die("clone3");
 	if (pid > 0) return 0;
-	
-	int fd = open("/dev/tty1", O_RDWR);
-	if (fd < 0)
-	        die("open");
-	
-	for (int i = 0; i <= 2; i++) {
-	    if (dup2(fd, i) < 0)
-	    	die("dup2");
-	}
-	if (fd > 2) close(fd);
-	
-	if (setsid() < 0)
-	        die("setsid");
 
 	if (mount(NULL, "/", NULL, MS_REC | MS_PRIVATE, NULL) < 0)
 	    die("mount MS_PRIVATE failed");
