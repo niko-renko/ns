@@ -56,12 +56,12 @@ int main() {
 	    return 1;
 	}
 
-	if (mount("/var/lib/lxc/test/rootfs", "/var/lib/lxc/test/rootfs", NULL, MS_BIND | MS_REC, NULL) < 0) {
+	if (mount("/root/Code/custom/rootfs", "/root/Code/custom/rootfs", NULL, MS_BIND | MS_REC, NULL) < 0) {
 		perror("bind /mnt/newroot");
 		return 1;
 	}
 	
-	if (syscall(SYS_pivot_root, "/var/lib/lxc/test/rootfs", "/var/lib/lxc/test/rootfs/mnt") < 0) {
+	if (syscall(SYS_pivot_root, "/root/Code/custom/rootfs", "/root/Code/custom/rootfs/mnt") < 0) {
 		perror("pivot_root");
 		return 1;
 	}
@@ -71,12 +71,7 @@ int main() {
 		return 1;
 	}
 
-	// umount("/proc");
-	// mount("proc", "/proc", "proc", 0, NULL);
-	
 	execl("/sbin/init", "init", (char *)NULL);
-	// execl("/bin/bash", "bash", (char *)NULL);
-	// execl("/oldroot/bin/bash", "bash", (char *)NULL);
 	// Unreachable
 }
 
