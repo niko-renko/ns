@@ -24,52 +24,41 @@ pid_t clone() {
 	return syscall(SYS_clone3, &args, sizeof(args));
 }
 
+void die(const char *msg) {
+	perror(msg);
+	exit(1);
+}
+
 int main() {
 	pid_t pid = clone();
-	if (pid < 0) {
-		perror("clone3");
-		return 1;
-	}
+	if (pid < 0)
+		die("clone3");
 	if (pid > 0) return 0;
 	
 	int fd = open("/dev/tty1", O_RDWR);
-	if (fd < 0) {
-	        perror("open");
-	        return 1;
-	}
+	if (fd < 0)
+	        die("open");
 	
 	for (int i = 0; i <= 2; i++) {
-	    if (dup2(fd, i) < 0) {
-	    	perror("dup2");
-	    	return 1;
-	    }
+	    if (dup2(fd, i) < 0)
+	    	die("dup2");
 	}
 	if (fd > 2) close(fd);
 	
-	if (setsid() < 0) {
-	        perror("setsid");
-	        return 1;
-	}
+	if (setsid() < 0)
+	        die("setsid");
 
-	if (mount(NULL, "/", NULL, MS_REC | MS_PRIVATE, NULL) < 0) {
-	    perror("mount MS_PRIVATE failed");
-	    return 1;
-	}
+	if (mount(NULL, "/", NULL, MS_REC | MS_PRIVATE, NULL) < 0)
+	    die("mount MS_PRIVATE failed");
 
-	if (mount("/root/Code/custom/rootfs", "/root/Code/custom/rootfs", NULL, MS_BIND | MS_REC, NULL) < 0) {
-		perror("bind /mnt/newroot");
-		return 1;
-	}
+	if (mount("/root/Code/custom/rootfs", "/root/Code/custom/rootfs", NULL, MS_BIND | MS_REC, NULL) < 0)
+		die("bind /mnt/newroot");
 	
-	if (syscall(SYS_pivot_root, "/root/Code/custom/rootfs", "/root/Code/custom/rootfs/mnt") < 0) {
-		perror("pivot_root");
-		return 1;
-	}
+	if (syscall(SYS_pivot_root, "/root/Code/custom/rootfs", "/root/Code/custom/rootfs/mnt") < 0)
+		die("pivot_root");
 
-	if (umount2("/mnt", MNT_DETACH) < 0) {
-		perror("umount2");
-		return 1;
-	}
+	if (umount2("/mnt", MNT_DETACH) < 0)
+		die("umount2");
 
 	execl("/sbin/init", "init", (char *)NULL);
 	// Unreachable
