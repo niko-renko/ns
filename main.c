@@ -36,10 +36,10 @@ int main() {
 	if (mount(NULL, "/", NULL, MS_REC | MS_PRIVATE, NULL) < 0)
 	    die("mount MS_PRIVATE failed");
 
-	if (mount("/root/Code/custom/rootfs", "/root/Code/custom/rootfs", NULL, MS_BIND | MS_REC, NULL) < 0)
+	if (mount("/root/Code/rootfs", "/root/Code/rootfs", NULL, MS_BIND | MS_REC, NULL) < 0)
 		die("bind /mnt/newroot");
 	
-	if (syscall(SYS_pivot_root, "/root/Code/custom/rootfs", "/root/Code/custom/rootfs/mnt") < 0)
+	if (syscall(SYS_pivot_root, "/root/Code/rootfs", "/root/Code/rootfs/mnt") < 0)
 		die("pivot_root");
 
 	if (umount2("/mnt", MNT_DETACH) < 0)
