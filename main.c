@@ -14,11 +14,12 @@
 #include <sys/stat.h>
 #include <sys/mount.h>
 
-pid_t clone() {
+pid_t clone(int cfd) {
 	struct clone_args args;
 	memset(&args, 0, sizeof(args));
-	args.flags = CLONE_NEWPID | CLONE_NEWNS;
+	args.flags = CLONE_INTO_CGROUP | CLONE_NEWPID | CLONE_NEWNS | CLONE_NEWCGROUP;
 	args.exit_signal = SIGCHLD;
+	args.cgroup = cfd;
 	return syscall(SYS_clone3, &args, sizeof(args));
 }
 
@@ -28,7 +29,17 @@ void die(const char *msg) {
 }
 
 int main() {
-	pid_t pid = clone();
+	if (mount("cgroup", "/sys/fs/cgroup", "cgroup2", 0, NULL) < 0)
+		die("cgroup");
+	
+	if (mkdir("/sys/fs/cgroup/test", 0755) == -1 && errno != EEXIST)
+		die("mkdir");
+
+	int cfd = open("/sys/fs/cgroup/test", O_DIRECTORY);
+	if (cfd < 0)
+		die("cgroup open");
+
+	pid_t pid = clone(cfd);
 	if (pid < 0)
 		die("clone3");
 	if (pid > 0) return 0;
