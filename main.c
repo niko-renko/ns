@@ -6,6 +6,7 @@
 #include <signal.h>
 #include <string.h>
 
+#include <linux/vt.h>
 #include <linux/sched.h>
 #include <linux/types.h>
 
@@ -13,6 +14,8 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/mount.h>
+
+#define CGROUP_ROOT "/sys/fs/cgroup"
 
 pid_t clone(int cfd) {
 	struct clone_args args;
@@ -28,14 +31,39 @@ void die(const char *msg) {
 	exit(1);
 }
 
-int main() {
-	if (mount("cgroup", "/sys/fs/cgroup", "cgroup2", 0, NULL) < 0)
+int main(int argc, char **argv) {
+	if (argc != 2) {
+		fprintf(stderr, "usage: %s <cgroup-subpath>\n", argv[0]);
+		return 1;
+	}
+
+	int devnull = open("/dev/null", O_RDWR);
+	dup2(devnull, STDIN_FILENO);
+	dup2(devnull, STDOUT_FILENO);
+	dup2(devnull, STDERR_FILENO);
+	close(devnull);
+
+	int fd = open("/dev/tty0", O_RDWR);
+    	if (fd < 0)
+    	    die("open /dev/tty0");
+
+    	if (ioctl(fd, VT_ACTIVATE, 1) < 0)
+    	    die("VT_ACTIVATE");
+
+    	if (ioctl(fd, VT_WAITACTIVE, 1) < 0)
+		die("VT_WAITACTIVATE");
+	close(fd);	
+
+	char path[4096];
+    	snprintf(path, sizeof(path), "%s/%s", CGROUP_ROOT, argv[1]);
+
+	if (mount("cgroup", CGROUP_ROOT, "cgroup2", 0, NULL) < 0 && errno != EBUSY)
 		die("cgroup");
 	
-	if (mkdir("/sys/fs/cgroup/test", 0755) == -1 && errno != EEXIST)
+	if (mkdir(path, 0755) == -1 && errno != EEXIST)
 		die("mkdir");
 
-	int cfd = open("/sys/fs/cgroup/test", O_DIRECTORY);
+	int cfd = open(path, O_DIRECTORY);
 	if (cfd < 0)
 		die("cgroup open");
 
@@ -43,6 +71,7 @@ int main() {
 	if (pid < 0)
 		die("clone3");
 	if (pid > 0) return 0;
+	close(cfd);
 
 	if (mount(NULL, "/", NULL, MS_REC | MS_PRIVATE, NULL) < 0)
 	    die("mount MS_PRIVATE failed");
