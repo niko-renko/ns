@@ -6,10 +6,26 @@
 #include <string.h>
 #include <errno.h>
 #include <linux/vt.h>
+#include <linux/kd.h>
 
 #define DEV_PATH "/dev/input/event7" // adjust to your keyboard event device
 				     
 void handle(void) {
+    printf("detected\n");
+    int fd = open("/dev/tty0", O_RDWR);
+    if (fd < 0) {
+        perror("open");
+        exit(1);
+    }
+    if (ioctl(fd, KDSETMODE, KD_TEXT) < 0) {
+        perror("KD_TEXT");
+        close(fd);
+        exit(1);
+    }
+    close(fd);
+}
+
+void handle2(void) {
     int fd = open("/dev/tty0", O_RDWR);
     if (fd < 0) {
         perror("open");
