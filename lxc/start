@@ -1,0 +1,5 @@
+#!/bin/bash
+setsid bash < /dev/tty63 > /dev/tty63 2>&1 &
+mount -t cgroup2 none /sys/fs/cgroup
+lxc-start test
+/usr/bin/sleep inf

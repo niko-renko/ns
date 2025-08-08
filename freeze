@@ -1,0 +1,1 @@
+echo 1 > /sys/fs/cgroup/$1/cgroup.freeze

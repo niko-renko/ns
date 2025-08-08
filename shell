@@ -1,0 +1,2 @@
+#!/bin/bash
+setsid bash < /dev/tty$1 > /dev/tty$1 2>&1 &
