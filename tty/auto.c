@@ -16,29 +16,11 @@ void reset_tty(int num) {
         exit(1);
     }
 
-    if (ioctl(fd, TIOCSCTTY, 1) < 0) {
-        perror("TIOCSCTTY");
-        close(fd);
-        exit(1);
-    }
-
     struct vt_mode mode = {0};
     mode.mode = VT_AUTO;
 
     if (ioctl(fd, VT_SETMODE, &mode) < 0) {
         perror("VT_SETMODE");
-        close(fd);
-        exit(1);
-    }
-
-    if (ioctl(fd, KDSETMODE, KD_TEXT) < 0) {
-        perror("KDSETMODE");
-        close(fd);
-        exit(1);
-    }
-
-    if (ioctl(fd, KDSKBMODE, K_UNICODE) < 0) {
-        perror("KDSKBMODE");
         close(fd);
         exit(1);
     }
