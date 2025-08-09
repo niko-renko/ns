@@ -12,6 +12,10 @@
 				     
 void handle(void) {
     printf("detected\n");
+}
+
+void handle3(void) {
+    printf("detected\n");
     int fd = open("/dev/tty0", O_RDWR);
     if (fd < 0) {
         perror("open");
@@ -65,12 +69,13 @@ int main(void) {
                 ctrl = ev.value;
             else if (ev.code == KEY_LEFTALT || ev.code == KEY_RIGHTALT)
                 alt = ev.value;
-            else if (ev.code == KEY_L)
+            else if (ev.code == KEY_J)
                 l = ev.value;
 
-            if (ctrl && alt && l) {
+            if (l)
 		    handle();
-            }
+        //    if (ctrl && alt && l)
+	//	    handle();
         }
     }
 }
