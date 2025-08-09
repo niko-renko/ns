@@ -84,6 +84,7 @@ int main(int argc, char **argv) {
 
     printf("VT %d set to VT_PROCESS mode, ignoring release requests\n", vt);
 
+    close(vt_fd);
     // Keep process alive to receive signals
     while (1) {
         pause();
