@@ -1,4 +1,0 @@
-pkill -9 init_test
-gcc init.c set.c -o init_test
-./init_test &
-socat - UNIX-CONNECT:/run/initns.sock

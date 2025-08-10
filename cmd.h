@@ -1,0 +1,1 @@
+void cmd(int tty0);
