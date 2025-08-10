@@ -19,8 +19,8 @@
 #include <sys/un.h>
 #include <sys/wait.h>
 
-#include "common.h"
-#include "set.h"
+#include "../common.h"
+#include "../set/set.h"
 
 #define CGROUP_PATH "/sys/fs/cgroup"
 #define SOCK_PATH "/run/initns.sock"

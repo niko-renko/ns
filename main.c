@@ -20,10 +20,9 @@
 #include <sys/wait.h>
 
 #include "common.h"
-#include "cmd.h"
+#include "cmd/cmd.h"
 
 #define DEV_PATH "/dev/input/event7"
-
 
 void vt_switch(int tty0, int tty63) {
 	// Freeze all
