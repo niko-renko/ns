@@ -109,7 +109,7 @@ int main(void) {
 	if (pid < 0)
 		die("fork");
 	if (pid == 0)
-		cmd(tty0);
+		sock_cmd();
 		
 	for (;;) pause();
 }
