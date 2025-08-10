@@ -9,15 +9,43 @@
 #include <linux/input.h>
 #include <linux/vt.h>
 #include <linux/kd.h>
+#include <linux/sched.h>
 
+#include <sys/mount.h>
+#include <sys/syscall.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <sys/wait.h>
 
+#define CGROUP_PATH "/sys/fs/cgroup"
 #define DEV_PATH "/dev/input/event7"
 #define SOCK_PATH "/run/initns.sock"
+
+int file_add(const char *path, const char *s);
+int file_contains(const char *path, const char *s);
+int file_remove(const char *path, const char *s);
+
+pid_t clone(int cfd) {
+	struct clone_args args;
+	memset(&args, 0, sizeof(args));
+	args.flags = CLONE_INTO_CGROUP | CLONE_NEWPID | CLONE_NEWNS | CLONE_NEWCGROUP;
+	args.exit_signal = SIGCHLD;
+	args.cgroup = cfd;
+	return syscall(SYS_clone3, &args, sizeof(args));
+}
+
+int rm_r(const char *path) {
+    char cmd[512];
+    int ret;
+
+    if (snprintf(cmd, sizeof(cmd), "rm -rf '%s'", path) >= (int)sizeof(cmd))
+        return -1;
+
+    ret = system(cmd);
+    return (ret == 0) ? 0 : -1;
+}
 
 void die(const char *msg) {
 	perror(msg);
@@ -78,6 +106,13 @@ void bash(int tty0, int tty63) {
 }
 
 void cmd_new(int cfd, char *name) {
+	if (file_contains("/root/Code/instances", name)) {
+		write(cfd, "exists\n", 7);
+		return;
+	}
+
+	file_add("/root/Code/instances", name);
+
 	char rootfs[256];
 	snprintf(rootfs, sizeof(rootfs), "/root/Code/%s", name);
 	mkdir(rootfs, 0755);
@@ -89,10 +124,72 @@ void cmd_new(int cfd, char *name) {
 	if (waitpid(pid, NULL, 0) == -1)
 		die("waitpid");
 
-	write(cfd, name, strlen(name));
+	write(cfd, "ok\n", 3);
 }
 
-void cmd(void) {
+void cmd_rm(int cfd, char *name) {
+	if (!file_contains("/root/Code/instances", name)) {
+		write(cfd, "notfound\n", 9);
+		return;
+	}
+
+	char rootfs[256];
+	snprintf(rootfs, sizeof(rootfs), "/root/Code/%s", name);
+	rm_r(rootfs);
+
+	file_remove("/root/Code/instances", name);
+
+	write(cfd, "ok\n", 3);
+}
+
+void cmd_run(int cfd, char *name, int tty0) {
+    	if (ioctl(tty0, VT_ACTIVATE, 1) < 0)
+    		die("VT_ACTIVATE");
+
+    	if (ioctl(tty0, VT_WAITACTIVE, 1) < 0)
+		die("VT_WAITACTIVATE");
+
+	char cgpath[4096];
+    	snprintf(cgpath, sizeof(cgpath), "%s/%s", CGROUP_PATH, name);
+
+	if (mount("cgroup", CGROUP_PATH, "cgroup2", 0, NULL) < 0 && errno != EBUSY)
+		die("cgroup");
+	
+	if (mkdir(cgpath, 0755) == -1 && errno != EEXIST)
+		die("mkdir");
+
+	int fd = open(cgpath, O_DIRECTORY);
+	if (fd < 0)
+		die("cgroup open");
+
+	pid_t pid = clone(fd);
+	if (pid < 0)
+		die("clone3");
+	if (pid > 0) return;
+	close(fd);
+
+	if (mount(NULL, "/", NULL, MS_REC | MS_PRIVATE, NULL) < 0)
+	    die("mount MS_PRIVATE failed");
+
+	char rootfs[256];
+	snprintf(rootfs, sizeof(rootfs), "/root/Code/%s", name);
+
+	char rootfsmnt[256];
+	snprintf(rootfsmnt, sizeof(rootfsmnt), "/root/Code/%s/mnt", name);
+
+	if (mount(rootfs, rootfs, NULL, MS_BIND | MS_REC, NULL) < 0)
+		die("bind /mnt/newroot");
+	
+	if (syscall(SYS_pivot_root, rootfs, rootfsmnt) < 0)
+		die("pivot_root");
+
+	if (umount2("/mnt", MNT_DETACH) < 0)
+		die("umount2");
+
+	execl("/sbin/init", "init", (char *)NULL);
+}
+
+void cmd(int tty0) {
 	int fd, cfd;
 	struct sockaddr_un addr;
 	char buf[256];
@@ -134,6 +231,10 @@ void cmd(void) {
 
 			if (strcmp(cmd, "new") == 0)
 				cmd_new(cfd, arg);
+			if (strcmp(cmd, "rm") == 0)
+				cmd_rm(cfd, arg);
+			if (strcmp(cmd, "run") == 0)
+				cmd_run(cfd, arg, tty0);
 		}
 		
 		close(cfd);
@@ -146,9 +247,6 @@ void cmd(void) {
 int main(void) {
 	setenv("PATH", "/bin:/usr/bin", 1);
 	setenv("HOME", "/root", 1);
-	cmd();
-	for (;;) pause();
-
 
 	if (setsid() < 0)
 		die("setsid");
@@ -160,6 +258,9 @@ int main(void) {
 	int tty63 = open("/dev/tty63", O_RDWR);
 	if (tty63 < 0)
 		die("tty63 open");
+
+	cmd(tty0);
+	for (;;) pause();
 
 	pid_t pid;
 	pid = fork();
@@ -178,7 +279,7 @@ int main(void) {
 	if (pid < 0)
 		die("fork");
 	if (pid == 0)
-		cmd();
+		cmd(tty0);
 		
 	for (;;) pause();
 }
