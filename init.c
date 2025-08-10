@@ -1,22 +1,28 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include <linux/input.h>
 #include <fcntl.h>
 #include <string.h>
 #include <errno.h>
-#include <linux/vt.h>
-#include <linux/kd.h>
 #include <signal.h>
 
+#include <linux/input.h>
+#include <linux/vt.h>
+#include <linux/kd.h>
+
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <sys/un.h>
+
 #define DEV_PATH "/dev/input/event7"
+#define SOCK_PATH "/run/initns.sock"
 
 void die(const char *msg) {
 	perror(msg);
 	exit(1);
 }
 
-void handle(int tty63, int tty0) {
+void vt_switch(int tty0, int tty63) {
 	// Freeze all
 
 	if (ioctl(tty0, VT_ACTIVATE, 63) < 0)
@@ -32,7 +38,7 @@ void handle(int tty63, int tty0) {
 		die("KDSKBMODE");
 }
 
-void kbd(int tty63, int tty0) {
+void kbd(int tty0, int tty63) {
 	int fd = open(DEV_PATH, O_RDONLY);
 	if (fd < 0)
 		die("kbd open");
@@ -56,41 +62,110 @@ void kbd(int tty63, int tty0) {
 			j = ev.value;
 
 		if (ctrl && alt && j)
-			handle(tty63, tty0);
+			vt_switch(tty0, tty63);
 	}
 }
 
-int main(void) {
-	int fd;
-
-	setenv("PATH", "/bin:/usr/bin", 1);
-	setenv("HOME", "/root", 1);
-
-	if (setsid() < 0)
-		die("setsid");
-
-	int tty63 = open("/dev/tty63", O_RDWR);
-	if (tty63 < 0)
-		die("tty63 open");
-	if (ioctl(tty63, TIOCSCTTY, 1) < 0)
-		die("TIOCSCTTY");
+void bash(int tty0, int tty63) {
 	dup2(tty63, STDIN_FILENO);
 	dup2(tty63, STDOUT_FILENO);
 	dup2(tty63, STDERR_FILENO);
 
+	vt_switch(tty0, tty63);
+	execl("/bin/bash", "bash", (char *)NULL);
+}
+
+void cmd_new(int cfd, char *name) {
+	write(cfd, name, strlen(name));
+}
+
+void cmd(void) {
+	int fd, cfd;
+	struct sockaddr_un addr;
+	char buf[256];
+	ssize_t n;
+	
+	fd = socket(AF_UNIX, SOCK_STREAM, 0);
+	if (fd == -1)
+		die("socket");
+	
+	memset(&addr, 0, sizeof(addr));
+	addr.sun_family = AF_UNIX;
+	strncpy(addr.sun_path, SOCK_PATH, sizeof(addr.sun_path) - 1);
+	unlink(addr.sun_path);
+	
+	if (bind(fd, (struct sockaddr*)&addr, sizeof(addr)) == -1)
+		die("bind");
+	
+	if (listen(fd, 5) == -1)
+		die("listen");
+
+	for (;;) {
+		cfd = accept(fd, NULL, NULL);
+
+		if (cfd == -1) {
+			if (errno == EINTR) continue;
+			perror("accept");
+			break;
+		}
+		
+		while ((n = read(cfd, buf, sizeof(buf) - 1)) > 0) {
+			buf[n] = '\0';
+			char *nl = strchr(buf, '\n');
+ 			if (nl) *nl = '\0';
+			char *cmd = strtok(buf, " ");
+			char *arg = strtok(NULL, " ");
+
+			if (!cmd)
+				continue;
+
+			if (strcmp(cmd, "new") == 0)
+				cmd_new(cfd, arg);
+		}
+		
+		close(cfd);
+	}
+
+	close(fd);
+	unlink(SOCK_PATH);
+}
+
+int main(void) {
+	setenv("PATH", "/bin:/usr/bin", 1);
+	setenv("HOME", "/root", 1);
+	cmd();
+	for (;;) pause();
+
+
+	if (setsid() < 0)
+		die("setsid");
+
 	int tty0 = open("/dev/tty0", O_RDWR);
 	if (tty0 < 0)
 		die("tty0 open");
-	if (ioctl(tty0, VT_ACTIVATE, 63) < 0)
-		die("VT_ACTIVATE");
-	if (ioctl(tty0, VT_WAITACTIVE, 63) < 0)
-		die("VT_WAITACTIVE");
 
-	pid_t pid = fork();
-	
+	int tty63 = open("/dev/tty63", O_RDWR);
+	if (tty63 < 0)
+		die("tty63 open");
+
+	pid_t pid;
+	pid = fork();
 	if (pid < 0)
 		die("fork");
-	if (pid > 0)
-		execl("/bin/bash", "bash", (char *)NULL);
-	kbd(tty63, tty0);
+	if (pid == 0)
+		bash(tty0, tty63);
+
+	pid = fork();
+	if (pid < 0)
+		die("fork");
+	if (pid == 0)
+		kbd(tty0, tty63);
+
+	pid = fork();
+	if (pid < 0)
+		die("fork");
+	if (pid == 0)
+		cmd();
+		
+	for (;;) pause();
 }
