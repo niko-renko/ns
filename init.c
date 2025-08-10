@@ -19,6 +19,8 @@
 #define DEV_PATH "/dev/input/event7"
 #define SOCK_PATH "/run/initns.sock"
 
+int file_add(const char *path, const char *s);
+
 void die(const char *msg) {
 	perror(msg);
 	exit(1);
@@ -78,6 +80,8 @@ void bash(int tty0, int tty63) {
 }
 
 void cmd_new(int cfd, char *name) {
+	file_add("/root/Code/instances", name);
+
 	char rootfs[256];
 	snprintf(rootfs, sizeof(rootfs), "/root/Code/%s", name);
 	mkdir(rootfs, 0755);
