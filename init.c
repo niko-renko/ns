@@ -10,9 +10,11 @@
 #include <linux/vt.h>
 #include <linux/kd.h>
 
+#include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/un.h>
+#include <sys/wait.h>
 
 #define DEV_PATH "/dev/input/event7"
 #define SOCK_PATH "/run/initns.sock"
@@ -76,6 +78,17 @@ void bash(int tty0, int tty63) {
 }
 
 void cmd_new(int cfd, char *name) {
+	char rootfs[256];
+	snprintf(rootfs, sizeof(rootfs), "/root/Code/%s", name);
+	mkdir(rootfs, 0755);
+
+	pid_t pid = fork();
+	if (pid == 0)
+		execl("/bin/tar", "tar", "xf", "/root/Code/image.tar", "--strip-components=1", "-C", rootfs, (char *) NULL);
+	
+	if (waitpid(pid, NULL, 0) == -1)
+		die("waitpid");
+
 	write(cfd, name, strlen(name));
 }
 
