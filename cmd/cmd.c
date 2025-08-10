@@ -23,7 +23,6 @@
 #include "../set/set.h"
 
 #define CGROUP_PATH "/sys/fs/cgroup"
-#define SOCK_PATH "/run/initns.sock"
 
 int remove(const char *path) {
     char cmd[512];
@@ -82,12 +81,17 @@ void cmd_rm(int cfd, char *name) {
 	write(cfd, "ok\n", 3);
 }
 
-void cmd_run(int cfd, char *name, int tty0) {
-    	if (ioctl(tty0, VT_ACTIVATE, 1) < 0)
-    		die("VT_ACTIVATE");
+void cmd_run(int cfd, char *name) {
+	int tty0 = open("/dev/tty0", O_RDWR);
+	if (tty0 < 0)
+		die("tty0 open");
 
-    	if (ioctl(tty0, VT_WAITACTIVE, 1) < 0)
+    if (ioctl(tty0, VT_ACTIVATE, 1) < 0)
+    	die("VT_ACTIVATE");
+
+    if (ioctl(tty0, VT_WAITACTIVE, 1) < 0)
 		die("VT_WAITACTIVATE");
+	close(tty0);
 
 	char cgpath[4096];
     	snprintf(cgpath, sizeof(cgpath), "%s/%s", CGROUP_PATH, name);
@@ -129,57 +133,20 @@ void cmd_run(int cfd, char *name, int tty0) {
 	execl("/sbin/init", "init", (char *)NULL);
 }
 
-void cmd(int tty0) {
-	int fd, cfd;
-	struct sockaddr_un addr;
-	char buf[256];
-	ssize_t n;
-	
-	fd = socket(AF_UNIX, SOCK_STREAM, 0);
-	if (fd == -1)
-		die("socket");
-	
-	memset(&addr, 0, sizeof(addr));
-	addr.sun_family = AF_UNIX;
-	strncpy(addr.sun_path, SOCK_PATH, sizeof(addr.sun_path) - 1);
-	unlink(addr.sun_path);
-	
-	if (bind(fd, (struct sockaddr*)&addr, sizeof(addr)) == -1)
-		die("bind");
-	
-	if (listen(fd, 5) == -1)
-		die("listen");
+void accept_cmd(int cfd, char *line, int n) {
+	line[n] = '\0';
+	char *nl = strchr(line, '\n');
+	if (nl) *nl = '\0';
+	char *cmd = strtok(line, " ");
+	char *arg = strtok(NULL, " ");
 
-	for (;;) {
-		cfd = accept(fd, NULL, NULL);
+	if (!cmd)
+		return;
 
-		if (cfd == -1) {
-			if (errno == EINTR) continue;
-			perror("accept");
-			break;
-		}
-		
-		while ((n = read(cfd, buf, sizeof(buf) - 1)) > 0) {
-			buf[n] = '\0';
-			char *nl = strchr(buf, '\n');
- 			if (nl) *nl = '\0';
-			char *cmd = strtok(buf, " ");
-			char *arg = strtok(NULL, " ");
-
-			if (!cmd)
-				continue;
-
-			if (strcmp(cmd, "new") == 0)
-				cmd_new(cfd, arg);
-			if (strcmp(cmd, "rm") == 0)
-				cmd_rm(cfd, arg);
-			if (strcmp(cmd, "run") == 0)
-				cmd_run(cfd, arg, tty0);
-		}
-		
-		close(cfd);
-	}
-
-	close(fd);
-	unlink(SOCK_PATH);
+	if (strcmp(cmd, "new") == 0)
+		cmd_new(cfd, arg);
+	if (strcmp(cmd, "rm") == 0)
+		cmd_rm(cfd, arg);
+	if (strcmp(cmd, "run") == 0)
+		cmd_run(cfd, arg);
 }

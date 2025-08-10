@@ -1,1 +1,1 @@
-void cmd(int tty0);
+void sock_cmd(void);
