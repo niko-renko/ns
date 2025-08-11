@@ -2,54 +2,60 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <fcntl.h>
-#include <string.h>
-#include <errno.h>
-#include <signal.h>
-
 #include <linux/input.h>
-#include <linux/vt.h>
-#include <linux/kd.h>
-#include <linux/sched.h>
-
-#include <sys/mount.h>
-#include <sys/syscall.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <sys/un.h>
-#include <sys/wait.h>
+#include <errno.h>
+#include <string.h>
+#include <poll.h>
 
 #include "../common.h"
 
-#define DEV_PATH "/dev/input/event7"
+#define DEVICE_PATH "/dev/input/event0"
 
 void ctl(void);
 
-void kbd(void) {
-	// Make this the only way to get back
-	int fd = open(DEV_PATH, O_RDONLY);
-	if (fd < 0)
-		die("kbd open");
+int kbd(void) {
+    int fd;
+    struct input_event ev;
+    struct pollfd pfd;
+	int ctrl, alt, j;
 
-	struct input_event ev;
-	int ctrl = 0, alt = 0, j = 0;
-	
-	while (1) {
-		ssize_t n = read(fd, &ev, sizeof(ev));
-		if (n != sizeof(ev))
-			die("kbd read");
+    for (;;) {
+        fd = open(DEVICE_PATH, O_RDONLY);
+        if (fd < 0) {
+            perror("open");
+            sleep(1);
+            continue;
+        }
 
-		if (ev.type != EV_KEY)
-			continue;
+        pfd.fd = fd;
+        pfd.events = POLLIN;
 
-		if (ev.code == KEY_LEFTCTRL || ev.code == KEY_RIGHTCTRL)
-			ctrl = ev.value;
-		else if (ev.code == KEY_LEFTALT || ev.code == KEY_RIGHTALT)
-			alt = ev.value;
-		else if (ev.code == KEY_J)
-			j = ev.value;
+        for (;;) {
+            int ret = poll(&pfd, 1, -1);
+            if (ret < 0)
+                break;
 
-		if (ctrl && alt && j)
-			ctl();
-	}
+            if (!(pfd.revents & POLLIN))
+				break;
+
+            ssize_t n = read(fd, &ev, sizeof(ev));
+            if (n != sizeof(ev))
+				break;
+
+			if (ev.type != EV_KEY)
+				continue;
+
+			if (ev.code == KEY_LEFTCTRL || ev.code == KEY_RIGHTCTRL)
+				ctrl = ev.value;
+			else if (ev.code == KEY_LEFTALT || ev.code == KEY_RIGHTALT)
+				alt = ev.value;
+			else if (ev.code == KEY_J)
+				j = ev.value;
+
+			if (ctrl && alt && j)
+				ctl();
+        }
+
+        close(fd);
+    }
 }
