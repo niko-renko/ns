@@ -14,12 +14,52 @@
 #define INPUT_DIR "/dev/input"
 #define EVENT_PREFIX "event"
 
-#ifndef INPUT_PROP_KEYBOARD
-#define INPUT_PROP_KEYBOARD 0x01
-#endif
+struct seq_monitor_args {
+    char device_path[PATH_MAX];
+};
 
-static volatile int stop_flag = 0;
-static pthread_t monitor_thread_id;
+static void *seq_monitor(void *arg) {
+    struct seq_monitor_args *args = arg;
+    int fd = open(args->device_path, O_RDONLY | O_NONBLOCK);
+    if (fd < 0) {
+        perror("open device");
+        free(args);
+        return NULL;
+    }
+
+    struct input_event ev;
+    int ctrl = 0, alt = 0;
+
+    while (1) {
+        ssize_t n = read(fd, &ev, sizeof(ev));
+        if (n == (ssize_t)sizeof(ev)) {
+            if (ev.type == EV_KEY) {
+                if (ev.code == KEY_LEFTCTRL || ev.code == KEY_RIGHTCTRL)
+                    ctrl = ev.value;
+                else if (ev.code == KEY_LEFTALT || ev.code == KEY_RIGHTALT)
+                    alt = ev.value;
+                else if (ev.code == KEY_J && ev.value == 1) { // key press
+                    if (ctrl && alt) {
+                        printf("Control + Alt + J detected on %s\n", args->device_path);
+                        // handle event here
+                    }
+                }
+            }
+        } else if (n < 0) {
+            if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                usleep(10000);
+                continue;
+            } else {
+                perror("read");
+                break;
+            }
+        }
+    }
+
+    close(fd);
+    free(args);
+    return NULL;
+}
 
 int is_kbd(const char *path) {
     int fd = open(path, O_RDONLY | O_NONBLOCK);
@@ -57,8 +97,16 @@ int is_kbd(const char *path) {
 static void on_device_added(const char *devpath) {
     if (!is_kbd(devpath))
         return;
-
     printf("added: %s\n", devpath);
+
+    pthread_t seq_monitor_t;
+    struct seq_monitor_args *args = malloc(sizeof(*args));
+    strncpy(args->device_path, devpath, sizeof(args->device_path) - 1);
+    args->device_path[sizeof(args->device_path) - 1] = '\0';
+    if (pthread_create(&seq_monitor_t, NULL, seq_monitor, args) != 0) {
+        perror("pthread_create");
+        return;
+    }
 }
 
 static void on_device_removed(const char *devpath) {
@@ -84,7 +132,7 @@ static void scan_existing_devices(void) {
     closedir(dir);
 }
 
-static void *monitor_thread(void *arg) {
+static void *event_monitor(void *arg) {
     int inotify_fd = inotify_init1(IN_NONBLOCK);
     if (inotify_fd < 0) return NULL;
 
@@ -100,7 +148,7 @@ static void *monitor_thread(void *arg) {
         __attribute__ ((aligned(__alignof__(struct inotify_event))));
     ssize_t len;
 
-    while (!stop_flag) {
+    while (1) {
         len = read(inotify_fd, buf, sizeof(buf));
         if (len < 0) {
             if (errno == EAGAIN || errno == EWOULDBLOCK) {
@@ -134,15 +182,11 @@ static void *monitor_thread(void *arg) {
 }
 
 int main(void) {
-    if (pthread_create(&monitor_thread_id, NULL, monitor_thread, NULL) != 0) {
+    pthread_t event_monitor_t;
+    if (pthread_create(&event_monitor_t, NULL, event_monitor, NULL) != 0) {
         perror("pthread_create");
         return 1;
     }
-
-    // Example: run for 30 seconds then stop
-    sleep(30);
-    stop_flag = 1;
-    pthread_join(monitor_thread_id, NULL);
-
+    pthread_join(event_monitor_t, NULL);
     return 0;
 }
