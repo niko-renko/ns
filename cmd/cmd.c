@@ -147,7 +147,6 @@ void accept_cmd(int cfd, char *line, int n) {
 		instances = malloc(256);
     	snprintf(instances, 256, "%s/%s", ROOT, "instances");
 	}
-	return;
 
 	line[n] = '\0';
 	char *nl = strchr(line, '\n');
