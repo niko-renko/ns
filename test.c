@@ -1,119 +1,93 @@
 #define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
-#include <dirent.h>
 #include <string.h>
 #include <pthread.h>
 #include <sys/inotify.h>
 #include <unistd.h>
 #include <errno.h>
+#include <limits.h>
+#include <fcntl.h>
+#include <dirent.h>
 
-#define WATCH_DIR "/dev/input"
-#define EVENT_BUF_LEN (1024 * (sizeof(struct inotify_event) + 16))
+#define INPUT_DIR "/dev/input"
+#define EVENT_PREFIX "event"
 
-typedef struct event_file {
-    char *name;
-    struct event_file *next;
-} event_file_t;
+static volatile int stop_flag = 0;
+static pthread_t monitor_thread_id;
 
-static event_file_t *event_list = NULL;
-static pthread_mutex_t event_list_mutex = PTHREAD_MUTEX_INITIALIZER;
-
-static void free_event_list() {
-    event_file_t *cur = event_list;
-    while (cur) {
-        event_file_t *next = cur->next;
-        free(cur->name);
-        free(cur);
-        cur = next;
-    }
-    event_list = NULL;
+static void on_device_added(const char *devpath) {
+    // Empty handler for device added event
+    printf("added: %s\n", devpath);
 }
 
-static void add_event_file(const char *name) {
-    pthread_mutex_lock(&event_list_mutex);
-    event_file_t *node = malloc(sizeof(event_file_t));
-    node->name = strdup(name);
-    node->next = event_list;
-    event_list = node;
-    pthread_mutex_unlock(&event_list_mutex);
+static void on_device_removed(const char *devpath) {
+    // Empty handler for device removed event
+    printf("removed: %s\n", devpath);
 }
 
-static void remove_event_file(const char *name) {
-    pthread_mutex_lock(&event_list_mutex);
-    event_file_t **cur = &event_list;
-    while (*cur) {
-        if (strcmp((*cur)->name, name) == 0) {
-            event_file_t *to_free = *cur;
-            *cur = to_free->next;
-            free(to_free->name);
-            free(to_free);
-            break;
-        }
-        cur = &(*cur)->next;
-    }
-    pthread_mutex_unlock(&event_list_mutex);
+static int is_event_device(const char *name) {
+    return strncmp(name, EVENT_PREFIX, strlen(EVENT_PREFIX)) == 0;
 }
 
-static void print_event_list() {
-    pthread_mutex_lock(&event_list_mutex);
-    event_file_t *cur = event_list;
-    printf("Current event files:\n");
-    while (cur) {
-        printf("  %s\n", cur->name);
-        cur = cur->next;
-    }
-    pthread_mutex_unlock(&event_list_mutex);
-}
-
-static void parse_existing_event_files() {
-    DIR *dir = opendir(WATCH_DIR);
+static void scan_existing_devices(void) {
+    DIR *dir = opendir(INPUT_DIR);
     if (!dir) return;
 
     struct dirent *entry;
     while ((entry = readdir(dir)) != NULL) {
-        if (strncmp(entry->d_name, "event", 5) == 0) {
-            add_event_file(entry->d_name);
+        if (is_event_device(entry->d_name)) {
+            char fullpath[PATH_MAX];
+            snprintf(fullpath, sizeof(fullpath), "%s/%s", INPUT_DIR, entry->d_name);
+            on_device_added(fullpath);
         }
     }
     closedir(dir);
 }
 
-static void *watch_thread(void *arg) {
+static void *monitor_thread(void *arg) {
     int inotify_fd = inotify_init1(IN_NONBLOCK);
     if (inotify_fd < 0) return NULL;
 
-    int wd = inotify_add_watch(inotify_fd, WATCH_DIR, IN_CREATE | IN_DELETE);
+    int wd = inotify_add_watch(inotify_fd, INPUT_DIR, IN_CREATE | IN_DELETE);
     if (wd < 0) {
         close(inotify_fd);
         return NULL;
     }
 
-    char buffer[EVENT_BUF_LEN];
-    while (1) {
-        ssize_t length = read(inotify_fd, buffer, EVENT_BUF_LEN);
-        if (length < 0) {
-            if (errno == EAGAIN) {
-                usleep(100000);
+    scan_existing_devices();
+
+    char buf[4096]
+        __attribute__ ((aligned(__alignof__(struct inotify_event))));
+    ssize_t len;
+
+    while (!stop_flag) {
+        len = read(inotify_fd, buf, sizeof(buf));
+        if (len < 0) {
+            if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                usleep(200000);
                 continue;
-            }
-            break;
+            } else break;
+        }
+        if (len == 0) {
+            usleep(200000);
+            continue;
         }
 
-        ssize_t i = 0;
-        while (i < length) {
-            struct inotify_event *event = (struct inotify_event *) &buffer[i];
-            if (event->len && strncmp(event->name, "event", 5) == 0) {
+        for (char *ptr = buf; ptr < buf + len; ) {
+            struct inotify_event *event = (struct inotify_event *) ptr;
+            if (is_event_device(event->name)) {
+                char fullpath[PATH_MAX];
+                snprintf(fullpath, sizeof(fullpath), "%s/%s", INPUT_DIR, event->name);
+
                 if (event->mask & IN_CREATE) {
-                    add_event_file(event->name);
-                    printf("Added: %s\n", event->name);
-                } else if (event->mask & IN_DELETE) {
-                    remove_event_file(event->name);
-                    printf("Removed: %s\n", event->name);
+                    on_device_added(fullpath);
                 }
-                print_event_list();
+                if (event->mask & IN_DELETE) {
+                    on_device_removed(fullpath);
+                }
             }
-            i += sizeof(struct inotify_event) + event->len;
+            ptr += sizeof(struct inotify_event) + event->len;
         }
     }
 
@@ -122,29 +96,16 @@ static void *watch_thread(void *arg) {
     return NULL;
 }
 
-int main() {
-    parse_existing_event_files();
-    print_event_list();
-
-    pthread_t thread;
-    pthread_create(&thread, NULL, watch_thread, NULL);
-
-
-    while (1) {
-    pthread_mutex_lock(&event_list_mutex);
-    event_file_t *cur = event_list;
-    while (cur) {
-        printf("%s\n", cur->name);
-        cur = cur->next;
+int main(void) {
+    if (pthread_create(&monitor_thread_id, NULL, monitor_thread, NULL) != 0) {
+        perror("pthread_create");
+        return 1;
     }
-    pthread_mutex_unlock(&event_list_mutex);
-    sleep(1);
-    }
-    
 
-    pthread_join(thread, NULL);
+    // Example: run for 30 seconds then stop
+    sleep(30);
+    stop_flag = 1;
+    pthread_join(monitor_thread_id, NULL);
 
-    free_event_list();
-    pthread_mutex_destroy(&event_list_mutex);
     return 0;
 }
