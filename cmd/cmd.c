@@ -22,7 +22,10 @@
 #include "../common.h"
 #include "../set/set.h"
 
-#define CGROUP_PATH "/sys/fs/cgroup"
+#define ROOT "/root/Code"
+#define CGROUP_ROOT "/sys/fs/cgroup"
+
+static char *instances = NULL;
 
 int remove(const char *path) {
     char cmd[512];
@@ -45,20 +48,23 @@ pid_t clone(int cfd) {
 }
 
 void cmd_new(int cfd, char *name) {
-	if (file_contains("/root/Code/instances", name)) {
+	if (file_contains(instances, name)) {
 		write(cfd, "exists\n", 7);
 		return;
 	}
 
-	file_add("/root/Code/instances", name);
+	file_add(instances, name);
 
 	char rootfs[256];
-	snprintf(rootfs, sizeof(rootfs), "/root/Code/%s", name);
+	snprintf(rootfs, sizeof(rootfs), "%s/%s", ROOT, name);
+	char image[256];
+	snprintf(image, sizeof(image), "%s/%s", ROOT, "image.tar");
+
 	mkdir(rootfs, 0755);
 
 	pid_t pid = fork();
 	if (pid == 0)
-		execl("/bin/tar", "tar", "xf", "/root/Code/image.tar", "--strip-components=1", "-C", rootfs, (char *) NULL);
+		execl("/bin/tar", "tar", "xf", image, "--strip-components=1", "-C", rootfs, (char *) NULL);
 	
 	if (waitpid(pid, NULL, 0) == -1)
 		die("waitpid");
@@ -67,16 +73,16 @@ void cmd_new(int cfd, char *name) {
 }
 
 void cmd_rm(int cfd, char *name) {
-	if (!file_contains("/root/Code/instances", name)) {
+	if (!file_contains(instances, name)) {
 		write(cfd, "notfound\n", 9);
 		return;
 	}
 
 	char rootfs[256];
-	snprintf(rootfs, sizeof(rootfs), "/root/Code/%s", name);
+	snprintf(rootfs, sizeof(rootfs), "%s/%s", ROOT, name);
 	remove(rootfs);
 
-	file_remove("/root/Code/instances", name);
+	file_remove(instances, name);
 
 	write(cfd, "ok\n", 3);
 }
@@ -94,9 +100,9 @@ void cmd_run(int cfd, char *name) {
 	close(tty0);
 
 	char cgpath[4096];
-    	snprintf(cgpath, sizeof(cgpath), "%s/%s", CGROUP_PATH, name);
+    	snprintf(cgpath, sizeof(cgpath), "%s/%s", CGROUP_ROOT, name);
 
-	if (mount("cgroup", CGROUP_PATH, "cgroup2", 0, NULL) < 0 && errno != EBUSY)
+	if (mount("cgroup", CGROUP_ROOT, "cgroup2", 0, NULL) < 0 && errno != EBUSY)
 		die("cgroup");
 	
 	if (mkdir(cgpath, 0755) == -1 && errno != EEXIST)
@@ -109,17 +115,20 @@ void cmd_run(int cfd, char *name) {
 	pid_t pid = clone(fd);
 	if (pid < 0)
 		die("clone3");
-	if (pid > 0) return;
+	if (pid > 0) {
+		write(cfd, "ok\n", 3);
+		return;
+	}
 	close(fd);
 
 	if (mount(NULL, "/", NULL, MS_REC | MS_PRIVATE, NULL) < 0)
 	    die("mount MS_PRIVATE failed");
 
 	char rootfs[256];
-	snprintf(rootfs, sizeof(rootfs), "/root/Code/%s", name);
+	snprintf(rootfs, sizeof(rootfs), "%s/%s", ROOT, name);
 
 	char rootfsmnt[256];
-	snprintf(rootfsmnt, sizeof(rootfsmnt), "/root/Code/%s/mnt", name);
+	snprintf(rootfsmnt, sizeof(rootfsmnt), "%s/%s/mnt", ROOT, name);
 
 	if (mount(rootfs, rootfs, NULL, MS_BIND | MS_REC, NULL) < 0)
 		die("bind /mnt/newroot");
@@ -134,6 +143,12 @@ void cmd_run(int cfd, char *name) {
 }
 
 void accept_cmd(int cfd, char *line, int n) {
+	if (instances == NULL) {
+		instances = malloc(256);
+    	snprintf(instances, 256, "%s/%s", ROOT, "instances");
+	}
+	return;
+
 	line[n] = '\0';
 	char *nl = strchr(line, '\n');
 	if (nl) *nl = '\0';
