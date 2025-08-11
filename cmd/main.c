@@ -22,6 +22,12 @@
 #include "../common.h"
 #include "cmd.h"
 
+void accept_cmd(int, char *, int);
+
 int main(void) {
-    printf("hello world\n");
+	char buf[256];
+    int n;
+
+	while ((n = read(0, buf, sizeof(buf) - 1)) > 0)
+        accept_cmd(1, buf, n);
 }
