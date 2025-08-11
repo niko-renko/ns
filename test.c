@@ -8,21 +8,60 @@
 #include <errno.h>
 #include <limits.h>
 #include <fcntl.h>
+#include <linux/input.h>
 #include <dirent.h>
 
 #define INPUT_DIR "/dev/input"
 #define EVENT_PREFIX "event"
 
+#ifndef INPUT_PROP_KEYBOARD
+#define INPUT_PROP_KEYBOARD 0x01
+#endif
+
 static volatile int stop_flag = 0;
 static pthread_t monitor_thread_id;
 
+int is_kbd(const char *path) {
+    int fd = open(path, O_RDONLY | O_NONBLOCK);
+    if (fd < 0) return 0;
+
+    unsigned long evbit[(EV_MAX + 7) / 8] = {0};
+    unsigned long keybit[(KEY_MAX + 7) / 8] = {0};
+
+    if (ioctl(fd, EVIOCGBIT(0, sizeof(evbit)), evbit) < 0) {
+        close(fd);
+        return 0;
+    }
+
+    if (!(evbit[EV_KEY / 8] & (1 << (EV_KEY % 8))) ||
+        !(evbit[EV_SYN / 8] & (1 << (EV_SYN % 8)))) {
+        close(fd);
+        return 0;
+    }
+
+    if (ioctl(fd, EVIOCGBIT(EV_KEY, sizeof(keybit)), keybit) < 0) {
+        close(fd);
+        return 0;
+    }
+
+    int count = 0;
+    for (int code = 1; code <= 255; code++) {
+        if (keybit[code / 8] & (1 << (code % 8))) count++;
+        if (count > 15) break;
+    }
+
+    close(fd);
+    return count > 15;
+}
+
 static void on_device_added(const char *devpath) {
-    // Empty handler for device added event
+    if (!is_kbd(devpath))
+        return;
+
     printf("added: %s\n", devpath);
 }
 
 static void on_device_removed(const char *devpath) {
-    // Empty handler for device removed event
     printf("removed: %s\n", devpath);
 }
 
@@ -80,12 +119,10 @@ static void *monitor_thread(void *arg) {
                 char fullpath[PATH_MAX];
                 snprintf(fullpath, sizeof(fullpath), "%s/%s", INPUT_DIR, event->name);
 
-                if (event->mask & IN_CREATE) {
+                if (event->mask & IN_CREATE)
                     on_device_added(fullpath);
-                }
-                if (event->mask & IN_DELETE) {
+                if (event->mask & IN_DELETE)
                     on_device_removed(fullpath);
-                }
             }
             ptr += sizeof(struct inotify_event) + event->len;
         }
