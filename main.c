@@ -73,6 +73,9 @@ void bash(int tty0, int tty63) {
 	dup2(tty63, STDOUT_FILENO);
 	dup2(tty63, STDERR_FILENO);
 
+	if (setsid() < 0)
+		die("setsid");
+
 	vt_switch(tty0, tty63);
 	execl("/bin/bash", "bash", (char *)NULL);
 }
@@ -80,9 +83,6 @@ void bash(int tty0, int tty63) {
 int main(void) {
 	setenv("PATH", "/bin:/usr/bin", 1);
 	setenv("HOME", "/root", 1);
-
-	if (setsid() < 0)
-		die("setsid");
 
 	int tty0 = open("/dev/tty0", O_RDWR);
 	if (tty0 < 0)
