@@ -20,7 +20,7 @@
 #include <sys/wait.h>
 
 #include "../common.h"
-#include "cmd.h"
+#include "../cmd/cmd.h"
 
 void accept_cmd(int, char *, int);
 
