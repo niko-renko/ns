@@ -11,7 +11,7 @@ typedef struct Node {
     struct Node *next;
 } Node;
 
-static Node *load_file(const char *path) {
+static static Node *load_file(const char *path) {
     FILE *f = fopen(path, "r");
     if (!f) return NULL;
 
@@ -38,7 +38,7 @@ static Node *load_file(const char *path) {
     return head;
 }
 
-static void free_list(Node *head) {
+static static void free_list(Node *head) {
     while (head) {
         Node *tmp = head;
         head = head->next;

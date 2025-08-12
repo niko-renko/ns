@@ -27,7 +27,7 @@
 
 static char *instances = NULL;
 
-int remove(const char *path) {
+static int remove(const char *path) {
     char cmd[512];
     int ret;
 
@@ -38,7 +38,7 @@ int remove(const char *path) {
     return (ret == 0) ? 0 : -1;
 }
 
-pid_t clone(int cfd) {
+static pid_t clone(int cfd) {
 	struct clone_args args;
 	memset(&args, 0, sizeof(args));
 	args.flags = CLONE_INTO_CGROUP | CLONE_NEWPID | CLONE_NEWNS | CLONE_NEWCGROUP;
@@ -47,7 +47,7 @@ pid_t clone(int cfd) {
 	return syscall(SYS_clone3, &args, sizeof(args));
 }
 
-void cmd_new(int cfd, char *name) {
+static void cmd_new(int cfd, char *name) {
 	if (file_contains(instances, name)) {
 		write(cfd, "exists\n", 7);
 		return;
@@ -72,7 +72,7 @@ void cmd_new(int cfd, char *name) {
 	write(cfd, "ok\n", 3);
 }
 
-void cmd_rm(int cfd, char *name) {
+static void cmd_rm(int cfd, char *name) {
 	if (!file_contains(instances, name)) {
 		write(cfd, "notfound\n", 9);
 		return;
@@ -87,7 +87,7 @@ void cmd_rm(int cfd, char *name) {
 	write(cfd, "ok\n", 3);
 }
 
-void cmd_run(int cfd, char *name) {
+static void cmd_run(int cfd, char *name) {
 	int tty0 = open("/dev/tty0", O_RDWR);
 	if (tty0 < 0)
 		die("tty0 open");
@@ -142,7 +142,7 @@ void cmd_run(int cfd, char *name) {
 	execl("/sbin/init", "init", (char *)NULL);
 }
 
-void accept_cmd(int cfd, char *line, int n) {
+static void accept_cmd(int cfd, char *line, int n) {
 	if (instances == NULL) {
 		instances = malloc(256);
     	snprintf(instances, 256, "%s/%s", ROOT, "instances");

@@ -15,7 +15,7 @@
 
 static void spawn_seq_listener(char *);
 
-int is_kbd(const char *path) {
+static int is_kbd(const char *path) {
     int fd = open(path, O_RDONLY | O_NONBLOCK);
     if (fd < 0) return 0;
 
