@@ -1,4 +1,3 @@
-#define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -14,52 +13,6 @@
 #define INPUT_DIR "/dev/input"
 #define EVENT_PREFIX "event"
 
-struct seq_monitor_args {
-    char device_path[PATH_MAX];
-};
-
-static void *seq_monitor(void *arg) {
-    struct seq_monitor_args *args = arg;
-    int fd = open(args->device_path, O_RDONLY | O_NONBLOCK);
-    if (fd < 0) {
-        perror("open device");
-        free(args);
-        return NULL;
-    }
-
-    struct input_event ev;
-    int ctrl = 0, alt = 0;
-
-    while (1) {
-        ssize_t n = read(fd, &ev, sizeof(ev));
-        if (n == (ssize_t)sizeof(ev)) {
-            if (ev.type == EV_KEY) {
-                if (ev.code == KEY_LEFTCTRL || ev.code == KEY_RIGHTCTRL)
-                    ctrl = ev.value;
-                else if (ev.code == KEY_LEFTALT || ev.code == KEY_RIGHTALT)
-                    alt = ev.value;
-                else if (ev.code == KEY_J && ev.value == 1) { // key press
-                    if (ctrl && alt) {
-                        printf("Control + Alt + J detected on %s\n", args->device_path);
-                        // handle event here
-                    }
-                }
-            }
-        } else if (n < 0) {
-            if (errno == EAGAIN || errno == EWOULDBLOCK) {
-                usleep(10000);
-                continue;
-            } else {
-                perror("read");
-                break;
-            }
-        }
-    }
-
-    close(fd);
-    free(args);
-    return NULL;
-}
 
 int is_kbd(const char *path) {
     int fd = open(path, O_RDONLY | O_NONBLOCK);
@@ -109,10 +62,6 @@ static void on_device_added(const char *devpath) {
     }
 }
 
-static void on_device_removed(const char *devpath) {
-    printf("removed: %s\n", devpath);
-}
-
 static int is_event_device(const char *name) {
     return strncmp(name, EVENT_PREFIX, strlen(EVENT_PREFIX)) == 0;
 }
@@ -136,7 +85,7 @@ static void *event_monitor(void *arg) {
     int inotify_fd = inotify_init1(IN_NONBLOCK);
     if (inotify_fd < 0) return NULL;
 
-    int wd = inotify_add_watch(inotify_fd, INPUT_DIR, IN_CREATE | IN_DELETE);
+    int wd = inotify_add_watch(inotify_fd, INPUT_DIR, IN_CREATE);
     if (wd < 0) {
         close(inotify_fd);
         return NULL;
@@ -166,11 +115,8 @@ static void *event_monitor(void *arg) {
             if (is_event_device(event->name)) {
                 char fullpath[PATH_MAX];
                 snprintf(fullpath, sizeof(fullpath), "%s/%s", INPUT_DIR, event->name);
-
                 if (event->mask & IN_CREATE)
                     on_device_added(fullpath);
-                if (event->mask & IN_DELETE)
-                    on_device_removed(fullpath);
             }
             ptr += sizeof(struct inotify_event) + event->len;
         }
