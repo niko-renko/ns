@@ -47,6 +47,14 @@ static pid_t clone(int cfd) {
 	return syscall(SYS_clone3, &args, sizeof(args));
 }
 
+void spawn_tar(const char *tar, const char *dest) {
+	pid_t pid = fork();
+	if (pid == 0)
+		execl("/bin/tar", "tar", "xf", tar, "--strip-components=1", "-C", dest, (char *) NULL);
+	if (waitpid(pid, NULL, 0) == -1)
+		die("waitpid");
+}
+
 static void cmd_new(int cfd, char *name) {
 	if (file_contains(instances, name)) {
 		write(cfd, "exists\n", 7);
@@ -61,13 +69,7 @@ static void cmd_new(int cfd, char *name) {
 	snprintf(image, sizeof(image), "%s/%s", ROOT, "image.tar");
 
 	mkdir(rootfs, 0755);
-
-	pid_t pid = fork();
-	if (pid == 0)
-		execl("/bin/tar", "tar", "xf", image, "--strip-components=1", "-C", rootfs, (char *) NULL);
-	
-	if (waitpid(pid, NULL, 0) == -1)
-		die("waitpid");
+	spawn_tar(image, rootfs);
 
 	write(cfd, "ok\n", 3);
 }

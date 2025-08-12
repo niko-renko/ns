@@ -21,12 +21,12 @@
 
 #include "../common.h"
 
-void spawn_shell() {
+pid_t spawn_shell() {
     pid_t pid = fork();
     if (pid < 0)
         die("fork");
     if (pid > 0)
-        return;
+        return pid;
 
     int tty0 = open("/dev/tty0", O_RDWR);
     if (tty0 < 0)
@@ -60,7 +60,7 @@ void spawn_shell() {
 
 void ctl(void) {
 	// Freeze all
-	spawn_shell();
+	pid_t pid = spawn_shell();
 
 	return;
 }
