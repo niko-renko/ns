@@ -21,8 +21,7 @@
 
 #include "../common.h"
 
-void ctl(void) {
-	// Freeze all
+void spawn_shell() {
     pid_t pid = fork();
     if (pid < 0)
         die("fork");
@@ -57,4 +56,11 @@ void ctl(void) {
 	setenv("PATH", "/bin:/usr/bin", 1);
 	setenv("HOME", "/root", 1);
 	execl("/bin/bash", "bash", (char *)NULL);
+}
+
+void ctl(void) {
+	// Freeze all
+	spawn_shell();
+
+	return;
 }

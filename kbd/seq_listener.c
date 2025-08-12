@@ -10,7 +10,7 @@
 #include <linux/input.h>
 #include <dirent.h>
 
-void ctl(void);
+#include "../ctl/ctl.h"
 
 struct seq_listener_args {
     char device_path[PATH_MAX];

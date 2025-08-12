@@ -19,24 +19,12 @@
 #include <sys/un.h>
 #include <sys/wait.h>
 
-#include "common.h"
-#include "cmd/cmd.h"
-#include "ctl/ctl.h"
+void accept_cmd(int, char *, int);
 
-int main(void) {
-	pid_t pid;
+void console_cmd(void) {
+	char buf[256];
+    int n;
 
-	pid = fork();
-	if (pid < 0)
-		die("fork");
-	if (pid == 0)
-		kbd();
-
-	pid = fork();
-	if (pid < 0)
-		die("fork");
-	if (pid == 0)
-		sock_cmd();
-		
-	for (;;) pause();
+	while ((n = read(0, buf, sizeof(buf) - 1)) > 0)
+        accept_cmd(1, buf, n);
 }

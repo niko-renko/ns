@@ -27,7 +27,7 @@
 
 static char *instances = NULL;
 
-static int remove(const char *path) {
+static int remove_recursive(const char *path) {
     char cmd[512];
     int ret;
 
@@ -80,7 +80,7 @@ static void cmd_rm(int cfd, char *name) {
 
 	char rootfs[256];
 	snprintf(rootfs, sizeof(rootfs), "%s/%s", ROOT, name);
-	remove(rootfs);
+	remove_recursive(rootfs);
 
 	file_remove(instances, name);
 
@@ -142,7 +142,7 @@ static void cmd_run(int cfd, char *name) {
 	execl("/sbin/init", "init", (char *)NULL);
 }
 
-static void accept_cmd(int cfd, char *line, int n) {
+void accept_cmd(int cfd, char *line, int n) {
 	if (instances == NULL) {
 		instances = malloc(256);
     	snprintf(instances, 256, "%s/%s", ROOT, "instances");

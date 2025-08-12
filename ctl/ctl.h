@@ -1,1 +1,1 @@
-void kbd(void);
+void ctl(void);
