@@ -5,6 +5,7 @@
 #include <string.h>
 #include <errno.h>
 #include <signal.h>
+#include <pthread.h>
 
 #include <linux/input.h>
 #include <linux/vt.h>
@@ -26,7 +27,7 @@
 
 void accept_cmd(int, char *, int);
 
-void sock_cmd(void) {
+static void *sock_cmd(void *arg) {
 	int fd, cfd;
 	struct sockaddr_un addr;
 	char buf[256];
@@ -64,4 +65,11 @@ void sock_cmd(void) {
 
 	close(fd);
 	unlink(SOCK_PATH);
+}
+
+void spawn_sock_cmd(void) {
+    pthread_t sock_cmd_t;
+    if (pthread_create(&sock_cmd_t, NULL, sock_cmd, NULL) != 0)
+        die("pthread_create");
+    return;
 }

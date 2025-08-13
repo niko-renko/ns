@@ -1,5 +1,6 @@
 #include "./cmd/cmd.h"
 
 int main(void) {
-    console_cmd();
+    spawn_console_cmd();
+	for (;;) pause();
 }

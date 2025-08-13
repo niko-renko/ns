@@ -24,15 +24,8 @@
 #include "kbd/kbd.h"
 
 int main(void) {
-	pid_t pid;
-
 	spawn_kbd();
-
-	pid = fork();
-	if (pid < 0)
-		die("fork");
-	if (pid == 0)
-		sock_cmd();
+	spawn_sock_cmd();
 		
 	for (;;) pause();
 }
