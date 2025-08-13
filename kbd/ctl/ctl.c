@@ -19,7 +19,7 @@
 #include <sys/un.h>
 #include <sys/wait.h>
 
-#include "../common.h"
+#include "../../common.h"
 
 pid_t spawn_shell() {
     pid_t pid = fork();
@@ -59,7 +59,7 @@ pid_t spawn_shell() {
 }
 
 void ctl(void) {
-	// Freeze all
+	// Freeze active
 	pid_t pid = spawn_shell();
 
 	return;

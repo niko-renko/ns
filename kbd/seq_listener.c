@@ -11,7 +11,7 @@
 #include <dirent.h>
 
 #include "../common.h"
-#include "../ctl/ctl.h"
+#include "ctl/ctl.h"
 
 struct seq_listener_args {
     char device_path[PATH_MAX];
