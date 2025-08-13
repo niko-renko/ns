@@ -11,15 +11,19 @@
 #include <dirent.h>
 
 #include "../common.h"
+#include "../state/state.h"
 
 void ctl(void);
 
 struct seq_listener_args {
+    State *state;
     char device_path[PATH_MAX];
 };
 
 static void *seq_listener(void *arg) {
     struct seq_listener_args *args = arg;
+    set_state(args->state);
+
     int fd = open(args->device_path, O_RDONLY | O_NONBLOCK);
     if (fd < 0) {
         perror("open device");
@@ -61,6 +65,7 @@ static void *seq_listener(void *arg) {
 void spawn_seq_listener(char *devpath) {
     pthread_t seq_listener_t;
     struct seq_listener_args *args = malloc(sizeof(*args));
+    args->state = get_state();
     strncpy(args->device_path, devpath, sizeof(args->device_path) - 1);
     args->device_path[sizeof(args->device_path) - 1] = '\0';
     if (pthread_create(&seq_listener_t, NULL, seq_listener, args) != 0)

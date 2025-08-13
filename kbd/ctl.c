@@ -20,6 +20,7 @@
 #include <sys/wait.h>
 
 #include "../common.h"
+#include "../state/state.h"
 
 pid_t spawn_shell() {
     pid_t pid = fork();

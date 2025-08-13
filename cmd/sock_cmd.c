@@ -31,6 +31,7 @@ void cmd(int, int);
 static void *sock_cmd(void *arg) {
 	State *state = arg;
     set_state(state);
+
 	int fd, cfd;
 	struct sockaddr_un addr;
 	
