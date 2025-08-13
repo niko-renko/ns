@@ -48,10 +48,8 @@ pid_t spawn_shell() {
 	if (ioctl(tty63, KDSKBMODE, K_UNICODE) < 0)
 		die("KDSKBMODE");
 
-	dup2(tty63, STDIN_FILENO);
 	dup2(tty63, STDOUT_FILENO);
 	dup2(tty63, STDERR_FILENO);
-    close(tty63);
 
 	if (setsid() < 0)
 		die("setsid");
