@@ -5,6 +5,7 @@
 #include <string.h>
 #include <errno.h>
 #include <signal.h>
+#include <pthread.h>
 
 #include <linux/input.h>
 #include <linux/vt.h>
@@ -20,6 +21,7 @@
 #include <sys/wait.h>
 
 #include "../common.h"
+#include "../state/state.h"
 #include "../set/set.h"
 
 #define ROOT "/root/Code"
@@ -146,6 +148,20 @@ static void cmd_run(int cfd, char *name) {
 	execl("/sbin/init", "init", (char *)NULL);
 }
 
+static void cmd_allow(int cfd, char *value) {
+	int allow;
+	if (value[0] == '0')
+		allow = 0;
+	else
+		allow = 1;
+
+	State *state = get_state();
+	pthread_mutex_lock(&state->lock);
+	state->allow = allow;
+	pthread_mutex_unlock(&state->lock);
+	write(cfd, "ok\n", 3);
+}
+
 static void accept_cmd(int cfd, char *line, int n) {
 	if (instances == NULL) {
 		instances = malloc(256);
@@ -167,6 +183,8 @@ static void accept_cmd(int cfd, char *line, int n) {
 		cmd_rm(cfd, arg);
 	if (strcmp(cmd, "run") == 0)
 		cmd_run(cfd, arg);
+	if (strcmp(cmd, "allow") == 0)
+		cmd_allow(cfd, arg);
 }
 
 void cmd(int in, int out) {

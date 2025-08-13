@@ -28,7 +28,8 @@
 int main(void) {
 	State state = {
 		.lock = PTHREAD_MUTEX_INITIALIZER,
-		.ctl = -1
+		.ctl = -1,
+		.allow = 0
 	};
 
 	spawn_kbd(&state);

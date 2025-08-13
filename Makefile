@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -Wall -Wextra -Wunused -O2 -ludev
+CFLAGS = -Wall -Wextra -Wunused -O2
 COMMON = set/*.c cmd/*.c kbd/*.c state/*.c common.c
 
 init:
