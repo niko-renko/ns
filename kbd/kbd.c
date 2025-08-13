@@ -78,6 +78,7 @@ static void scan_existing_devices(void) {
 }
 
 static void *kbd(void *arg) {
+    State *state = arg;
     int inotify_fd = inotify_init1(IN_NONBLOCK);
     if (inotify_fd < 0) return NULL;
 
@@ -123,9 +124,9 @@ static void *kbd(void *arg) {
     return NULL;
 }
 
-void spawn_kbd() {
+void spawn_kbd(State *state) {
     pthread_t kbd_t;
-    if (pthread_create(&kbd_t, NULL, kbd, NULL) != 0)
+    if (pthread_create(&kbd_t, NULL, kbd, state) != 0)
         die("pthread_create");
     return;
 }

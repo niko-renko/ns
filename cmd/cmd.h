@@ -1,2 +1,7 @@
-void spawn_sock_cmd(void);
-void spawn_console_cmd(void);
+#ifndef CMD_H
+#define CMD_H
+
+void cmd(int, int);
+void spawn_sock_cmd(State *);
+
+#endif

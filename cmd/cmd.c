@@ -47,7 +47,7 @@ static pid_t clone(int cfd) {
 	return syscall(SYS_clone3, &args, sizeof(args));
 }
 
-void spawn_tar(const char *tar, const char *dest) {
+static void spawn_tar(const char *tar, const char *dest) {
 	pid_t pid = fork();
 	if (pid == 0) {
 		clean_fds();
@@ -146,7 +146,7 @@ static void cmd_run(int cfd, char *name) {
 	execl("/sbin/init", "init", (char *)NULL);
 }
 
-void accept_cmd(int cfd, char *line, int n) {
+static void accept_cmd(int cfd, char *line, int n) {
 	if (instances == NULL) {
 		instances = malloc(256);
     	snprintf(instances, 256, "%s/%s", ROOT, "instances");
@@ -167,4 +167,12 @@ void accept_cmd(int cfd, char *line, int n) {
 		cmd_rm(cfd, arg);
 	if (strcmp(cmd, "run") == 0)
 		cmd_run(cfd, arg);
+}
+
+void cmd(int in, int out) {
+	char buf[256];
+    int n;
+
+	while ((n = read(in, buf, sizeof(buf) - 1)) > 0)
+        accept_cmd(out, buf, n);
 }

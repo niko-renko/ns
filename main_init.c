@@ -5,6 +5,7 @@
 #include <string.h>
 #include <errno.h>
 #include <signal.h>
+#include <pthread.h>
 
 #include <linux/input.h>
 #include <linux/vt.h>
@@ -24,8 +25,13 @@
 #include "kbd/kbd.h"
 
 int main(void) {
-	spawn_kbd();
-	spawn_sock_cmd();
+	State state = {
+		.lock = PTHREAD_MUTEX_INITIALIZER,
+		.ctl = -1
+	};
+
+	spawn_kbd(&state);
+	spawn_sock_cmd(&state);
 		
 	for (;;) pause();
 }

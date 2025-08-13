@@ -25,13 +25,12 @@
 
 #define SOCK_PATH "/run/initns.sock"
 
-void accept_cmd(int, char *, int);
+void cmd(int, int);
 
 static void *sock_cmd(void *arg) {
+	State *state = arg;
 	int fd, cfd;
 	struct sockaddr_un addr;
-	char buf[256];
-	ssize_t n;
 	
 	fd = socket(AF_UNIX, SOCK_STREAM, 0);
 	if (fd == -1)
@@ -57,9 +56,7 @@ static void *sock_cmd(void *arg) {
 			break;
 		}
 		
-		while ((n = read(cfd, buf, sizeof(buf) - 1)) > 0)
-			accept_cmd(cfd, buf, n);
-
+		cmd(cfd, cfd);
 		close(cfd);
 	}
 
@@ -67,9 +64,9 @@ static void *sock_cmd(void *arg) {
 	unlink(SOCK_PATH);
 }
 
-void spawn_sock_cmd(void) {
+void spawn_sock_cmd(State *state) {
     pthread_t sock_cmd_t;
-    if (pthread_create(&sock_cmd_t, NULL, sock_cmd, NULL) != 0)
+    if (pthread_create(&sock_cmd_t, NULL, sock_cmd, state) != 0)
         die("pthread_create");
     return;
 }
