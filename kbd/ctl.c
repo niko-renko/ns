@@ -5,6 +5,7 @@
 #include <string.h>
 #include <errno.h>
 #include <signal.h>
+#include <pthread.h>
 
 #include <linux/input.h>
 #include <linux/vt.h>
@@ -62,6 +63,15 @@ pid_t spawn_shell() {
 
 void ctl(void) {
 	// Freeze active
+	State *state = get_state();
+	pthread_mutex_lock(&state->lock);
+	if (state->ctl == 1) {
+		pthread_mutex_unlock(&state->lock);
+		return;
+	}
+	state->ctl = 1;
+	pthread_mutex_unlock(&state->lock);
+
 	pid_t pid = spawn_shell();
 
 	return;
