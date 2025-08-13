@@ -1,1 +1,1 @@
-void kbd(void);
+void spawn_kbd(void);

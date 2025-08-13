@@ -10,6 +10,7 @@
 #include <linux/input.h>
 #include <dirent.h>
 
+#include "../common.h"
 #include "../ctl/ctl.h"
 
 struct seq_listener_args {
@@ -65,8 +66,7 @@ void spawn_seq_listener(char *devpath) {
     struct seq_listener_args *args = malloc(sizeof(*args));
     strncpy(args->device_path, devpath, sizeof(args->device_path) - 1);
     args->device_path[sizeof(args->device_path) - 1] = '\0';
-    if (pthread_create(&seq_listener_t, NULL, seq_listener, args) != 0) {
-        perror("pthread_create");
-        return;
-    }
+    if (pthread_create(&seq_listener_t, NULL, seq_listener, args) != 0)
+        die("pthread_create");
+    return;
 }

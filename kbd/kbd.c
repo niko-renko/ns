@@ -10,6 +10,8 @@
 #include <linux/input.h>
 #include <dirent.h>
 
+#include "../common.h"
+
 #define INPUT_DIR "/dev/input"
 #define EVENT_PREFIX "event"
 
@@ -72,16 +74,17 @@ static void scan_existing_devices(void) {
         }
     }
     closedir(dir);
+    return;
 }
 
-void kbd(void) {
+static void *kbd(void *arg) {
     int inotify_fd = inotify_init1(IN_NONBLOCK);
-    if (inotify_fd < 0) return;
+    if (inotify_fd < 0) return NULL;
 
     int wd = inotify_add_watch(inotify_fd, INPUT_DIR, IN_CREATE);
     if (wd < 0) {
         close(inotify_fd);
-        return;
+        return NULL;
     }
 
     scan_existing_devices();
@@ -117,5 +120,12 @@ void kbd(void) {
 
     inotify_rm_watch(inotify_fd, wd);
     close(inotify_fd);
+    return NULL;
+}
+
+void spawn_kbd() {
+    pthread_t kbd_t;
+    if (pthread_create(&kbd_t, NULL, kbd, NULL) != 0)
+        die("pthread_create");
     return;
 }

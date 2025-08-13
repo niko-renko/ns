@@ -26,11 +26,7 @@
 int main(void) {
 	pid_t pid;
 
-	pid = fork();
-	if (pid < 0)
-		die("fork");
-	if (pid == 0)
-		kbd();
+	spawn_kbd();
 
 	pid = fork();
 	if (pid < 0)
