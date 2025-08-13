@@ -94,6 +94,12 @@ static void cmd_rm(int cfd, char *name) {
 }
 
 static void cmd_run(int cfd, char *name) {
+	State *state = get_state();
+	pthread_mutex_lock(&state->lock);
+	state->ctl = 0;
+	state->allow = 1;
+	pthread_mutex_unlock(&state->lock);
+
 	int tty0 = open("/dev/tty0", O_RDWR);
 	if (tty0 < 0)
 		die("tty0 open");

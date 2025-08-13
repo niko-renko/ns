@@ -32,20 +32,18 @@ static void handle_sigusr1(int signo) {
 	int allow = state->allow;
 	pthread_mutex_unlock(&state->lock);
 
-    if (ioctl(tty63, VT_RELDISP, allow) < 0) {
+    if (ioctl(tty63, VT_RELDISP, allow) < 0)
         perror("VT_RELDISP deny");
-    } else {
+    else 
         printf("Denied VT release request\n");
-    }
 }
 
 static void handle_sigusr2(int signo) {
     (void)signo;
-    if (ioctl(tty63, VT_RELDISP, VT_ACKACQ) < 0) {
+    if (ioctl(tty63, VT_RELDISP, VT_ACKACQ) < 0)
         perror("VT_RELDISP ackacq");
-    } else {
+    else
         printf("Acknowledged VT acquire\n");
-    }
 }
 
 pid_t spawn_shell() {
