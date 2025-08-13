@@ -29,7 +29,7 @@ static void handle_sigusr1(int signo) {
     (void)signo;
 	State *state = get_state();
 	pthread_mutex_lock(&state->lock);
-	int allow = state->ctl;
+	int allow = !state->ctl;
 	pthread_mutex_unlock(&state->lock);
 
     if (ioctl(tty63, VT_RELDISP, allow) < 0)
