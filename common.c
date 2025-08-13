@@ -23,3 +23,8 @@ void die(const char *msg) {
 	perror(msg);
 	exit(1);
 }
+
+void clean_fds() {
+	for (int fd = 0; fd < sysconf(_SC_OPEN_MAX); fd++)
+        close(fd);
+}

@@ -27,6 +27,7 @@ pid_t spawn_shell() {
         die("fork");
     if (pid > 0)
         return pid;
+	clean_fds();
 
     int tty0 = open("/dev/tty0", O_RDWR);
     if (tty0 < 0)

@@ -49,8 +49,10 @@ static pid_t clone(int cfd) {
 
 void spawn_tar(const char *tar, const char *dest) {
 	pid_t pid = fork();
-	if (pid == 0)
+	if (pid == 0) {
+		clean_fds();
 		execl("/bin/tar", "tar", "xf", tar, "--strip-components=1", "-C", dest, (char *) NULL);
+	}
 	if (waitpid(pid, NULL, 0) == -1)
 		die("waitpid");
 }
@@ -121,7 +123,7 @@ static void cmd_run(int cfd, char *name) {
 		write(cfd, "ok\n", 3);
 		return;
 	}
-	close(fd);
+	clean_fds();
 
 	if (mount(NULL, "/", NULL, MS_REC | MS_PRIVATE, NULL) < 0)
 	    die("mount MS_PRIVATE failed");
