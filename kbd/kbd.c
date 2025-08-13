@@ -127,9 +127,9 @@ static void *kbd(void *arg) {
     return NULL;
 }
 
-void spawn_kbd(State *state) {
+void spawn_kbd() {
     pthread_t kbd_t;
-    if (pthread_create(&kbd_t, NULL, kbd, state) != 0)
+    if (pthread_create(&kbd_t, NULL, kbd, get_state()) != 0)
         die("pthread_create");
     return;
 }
