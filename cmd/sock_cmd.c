@@ -22,6 +22,7 @@
 
 #include "../common.h"
 #include "../set/set.h"
+#include "../state/state.h"
 
 #define SOCK_PATH "/run/initns.sock"
 
@@ -29,6 +30,7 @@ void cmd(int, int);
 
 static void *sock_cmd(void *arg) {
 	State *state = arg;
+    set_state(state);
 	int fd, cfd;
 	struct sockaddr_un addr;
 	

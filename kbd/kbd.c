@@ -10,6 +10,7 @@
 #include <linux/input.h>
 #include <dirent.h>
 
+#include "../state/state.h"
 #include "../common.h"
 
 #define INPUT_DIR "/dev/input"
@@ -79,6 +80,7 @@ static void scan_existing_devices(void) {
 
 static void *kbd(void *arg) {
     State *state = arg;
+    set_state(state);
     int inotify_fd = inotify_init1(IN_NONBLOCK);
     if (inotify_fd < 0) return NULL;
 

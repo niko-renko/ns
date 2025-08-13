@@ -11,15 +11,12 @@
 #include <dirent.h>
 
 #include "../common.h"
-#include "ctl/ctl.h"
+
+void ctl(void);
 
 struct seq_listener_args {
     char device_path[PATH_MAX];
 };
-
-static void handle() {
-    ctl();
-}
 
 static void *seq_listener(void *arg) {
     struct seq_listener_args *args = arg;
@@ -43,7 +40,7 @@ static void *seq_listener(void *arg) {
                     alt = ev.value;
                 else if (ev.code == KEY_J && ev.value == 1)
                     if (ctrl && alt)
-                        handle();
+                        ctl();
             }
         } else if (n < 0) {
             if (errno == EAGAIN || errno == EWOULDBLOCK) {

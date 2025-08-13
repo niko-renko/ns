@@ -21,6 +21,7 @@
 #include <sys/wait.h>
 
 #include "common.h"
+#include "state/state.h"
 #include "cmd/cmd.h"
 #include "kbd/kbd.h"
 
