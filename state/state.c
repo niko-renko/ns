@@ -8,7 +8,7 @@ static pthread_key_t state_key;
 static pthread_once_t key_once = PTHREAD_ONCE_INIT;
 
 static void create_key(void) {
-    pthread_key_create(&state_key, free);
+    pthread_key_create(&state_key, NULL);
 }
 
 void set_state(State *state) {
