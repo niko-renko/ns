@@ -100,16 +100,7 @@ static void cmd_run(int cfd, char *name) {
 	state->ctl = 0;
 	pthread_mutex_unlock(&state->lock);
 
-	int tty0 = open("/dev/tty0", O_RDWR);
-	if (tty0 < 0)
-		die("tty0 open");
-
-    if (ioctl(tty0, VT_ACTIVATE, 1) < 0)
-    	die("VT_ACTIVATE");
-
-    if (ioctl(tty0, VT_WAITACTIVE, 1) < 0)
-		die("VT_WAITACTIVATE");
-	close(tty0);
+	switch_vt(1);
 
 	int cgroup = new_cgroup(name);
 	pid_t pid = clone(cgroup);

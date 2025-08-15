@@ -55,3 +55,14 @@ void configure_vt(void) {
     if (sigaction(SIGUSR1, &sa1, NULL) < 0)
         die("sigaction SIGUSR1");
 }
+
+void switch_vt(int vt) {
+	int tty0 = open("/dev/tty0", O_RDWR);
+	if (tty0 < 0)
+		die("tty0 open");
+    if (ioctl(tty0, VT_ACTIVATE, vt) < 0)
+    	die("VT_ACTIVATE");
+    if (ioctl(tty0, VT_WAITACTIVE, vt) < 0)
+		die("VT_WAITACTIVATE");
+	close(tty0);
+}

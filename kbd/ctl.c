@@ -22,6 +22,7 @@
 
 #include "../common.h"
 #include "../state/state.h"
+#include "../vt/vt.h"
 
 pid_t clone_shell() {
     pid_t pid = fork();
@@ -30,18 +31,10 @@ pid_t clone_shell() {
     if (pid > 0)
         return pid;
 	clean_fds();
+	switch_vt(63);
 
 	if (setsid() < 0)
 		die("setsid");
-
-    int tty0 = open("/dev/tty0", O_RDWR);
-    if (tty0 < 0)
-        die("tty0 open");
-	if (ioctl(tty0, VT_ACTIVATE, 63) < 0)
-		die("VT_ACTIVATE");
-	if (ioctl(tty0, VT_WAITACTIVE, 63) < 0)
-		die("VT_WAITACTIVE");
-    close(tty0);
 
     int tty63 = open("/dev/tty63", O_RDWR | O_NOCTTY);
     if (tty63 < 0)
