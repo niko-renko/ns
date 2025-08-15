@@ -49,14 +49,15 @@ static pid_t clone(int cfd) {
 	return syscall(SYS_clone3, &args, sizeof(args));
 }
 
-static void spawn_tar(const char *tar, const char *dest) {
+static void clone_tar(const char *tar, const char *dest) {
 	pid_t pid = fork();
-	if (pid == 0) {
-		clean_fds();
-		execl("/bin/tar", "tar", "xf", tar, "--strip-components=1", "-C", dest, (char *) NULL);
-	}
-	if (waitpid(pid, NULL, 0) == -1)
-		die("waitpid");
+    if (pid < 0)
+        die("fork");
+	if (pid > 0)
+		if (waitpid(pid, NULL, 0) == -1)
+			die("waitpid");
+	clean_fds();
+	execl("/bin/tar", "tar", "xf", tar, "--strip-components=1", "-C", dest, (char *) NULL);
 }
 
 static void cmd_new(int cfd, char *name) {
@@ -73,7 +74,7 @@ static void cmd_new(int cfd, char *name) {
 	snprintf(image, sizeof(image), "%s/%s", ROOT, "image.tar");
 
 	mkdir(rootfs, 0755);
-	spawn_tar(image, rootfs);
+	clone_tar(image, rootfs);
 
 	write(cfd, "ok\n", 3);
 }
@@ -110,23 +111,12 @@ static void cmd_run(int cfd, char *name) {
 		die("VT_WAITACTIVATE");
 	close(tty0);
 
-	char cgpath[4096];
-    snprintf(cgpath, sizeof(cgpath), "%s/%s", CGROUP_ROOT, name);
-
-	if (mount("cgroup", CGROUP_ROOT, "cgroup2", 0, NULL) < 0 && errno != EBUSY)
-		die("cgroup");
-	
-	if (mkdir(cgpath, 0755) == -1 && errno != EEXIST)
-		die("mkdir");
-
-	int fd = open(cgpath, O_DIRECTORY);
-	if (fd < 0)
-		die("cgroup open");
-
-	pid_t pid = clone(fd);
+	int cgroup = new_cgroup(name);
+	pid_t pid = clone(cgroup);
 	if (pid < 0)
 		die("clone3");
 	if (pid > 0) {
+		close(cgroup);
 		write(cfd, "ok\n", 3);
 		return;
 	}

@@ -1,7 +1,50 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <string.h>
+#include <errno.h>
+#include <signal.h>
+#include <pthread.h>
+#include <limits.h>
+
+#include <linux/input.h>
+#include <linux/vt.h>
+#include <linux/kd.h>
+#include <linux/sched.h>
+
+#include <sys/mount.h>
+#include <sys/syscall.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <sys/un.h>
+#include <sys/wait.h>
+
 #include "../common.h"
 #include "cgroup.h"
 
 void configure_cgroup(void) {
+	char cgpath[PATH_MAX];
+
 	if (mount("cgroup", CGROUP_ROOT, "cgroup2", 0, NULL) < 0 && errno != EBUSY)
 		die("cgroup");
+
+    snprintf(cgpath, sizeof(cgpath), "%s/%s", CGROUP_ROOT, CGROUP_NAME);
+	if (mkdir(cgpath, 0755) == -1)
+		die("mkdir");
+}
+
+int new_cgroup(char *name) {
+	char cgpath[PATH_MAX];
+
+    snprintf(cgpath, sizeof(cgpath), "%s/%s/%s", CGROUP_ROOT, CGROUP_NAME, name);
+	if (mkdir(cgpath, 0755) == -1)
+		die("mkdir");
+
+	int fd = open(cgpath, O_DIRECTORY);
+	if (fd < 0)
+		die("cgroup open");
+
+	return fd;
 }

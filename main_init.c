@@ -6,6 +6,7 @@
 #include "cmd/cmd.h"
 #include "kbd/kbd.h"
 #include "vt/vt.h"
+#include "cgroup/cgroup.h"
 
 int main(void) {
 	State state = {
@@ -16,6 +17,8 @@ int main(void) {
 	set_state(&state);
 
 	configure_vt();
+	configure_cgroup();
+
 	spawn_kbd();
 	spawn_sock_cmd();
 

@@ -23,7 +23,7 @@
 #include "../common.h"
 #include "../state/state.h"
 
-pid_t spawn_shell() {
+pid_t clone_shell() {
     pid_t pid = fork();
     if (pid < 0)
         die("fork");
@@ -73,6 +73,6 @@ void ctl(void) {
 	state->ctl = 1;
 	pthread_mutex_unlock(&state->lock);
 
-	pid_t pid = spawn_shell();
+	pid_t pid = clone_shell();
 	return;
 }
