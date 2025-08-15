@@ -24,6 +24,7 @@
 #include "../state/state.h"
 #include "../set/set.h"
 #include "../cgroup/cgroup.h"
+#include "../vt/vt.h"
 
 #define ROOT "/root/Code"
 
