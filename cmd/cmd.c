@@ -23,9 +23,9 @@
 #include "../common.h"
 #include "../state/state.h"
 #include "../set/set.h"
+#include "../cgroup/cgroup.h"
 
 #define ROOT "/root/Code"
-#define CGROUP_ROOT "/sys/fs/cgroup"
 
 static char *instances = NULL;
 
@@ -111,7 +111,7 @@ static void cmd_run(int cfd, char *name) {
 	close(tty0);
 
 	char cgpath[4096];
-    	snprintf(cgpath, sizeof(cgpath), "%s/%s", CGROUP_ROOT, name);
+    snprintf(cgpath, sizeof(cgpath), "%s/%s", CGROUP_ROOT, name);
 
 	if (mount("cgroup", CGROUP_ROOT, "cgroup2", 0, NULL) < 0 && errno != EBUSY)
 		die("cgroup");
