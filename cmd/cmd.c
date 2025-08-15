@@ -29,26 +29,6 @@
 
 static char *instances = NULL;
 
-static int remove_recursive(const char *path) {
-    char cmd[512];
-    int ret;
-
-    if (snprintf(cmd, sizeof(cmd), "rm -rf '%s'", path) >= (int)sizeof(cmd))
-        return -1;
-
-    ret = system(cmd);
-    return (ret == 0) ? 0 : -1;
-}
-
-static pid_t clone(int cfd) {
-	struct clone_args args;
-	memset(&args, 0, sizeof(args));
-	args.flags = CLONE_INTO_CGROUP | CLONE_NEWPID | CLONE_NEWNS | CLONE_NEWCGROUP;
-	args.exit_signal = SIGCHLD;
-	args.cgroup = cfd;
-	return syscall(SYS_clone3, &args, sizeof(args));
-}
-
 static void clone_tar(const char *tar, const char *dest) {
 	pid_t pid = fork();
     if (pid < 0)
@@ -60,22 +40,40 @@ static void clone_tar(const char *tar, const char *dest) {
 	execl("/bin/tar", "tar", "xf", tar, "--strip-components=1", "-C", dest, (char *) NULL);
 }
 
+static void clone_rm(const char *path) {
+	pid_t pid = fork();
+    if (pid < 0)
+        die("fork");
+	if (pid > 0)
+		if (waitpid(pid, NULL, 0) == -1)
+			die("waitpid");
+	clean_fds();
+	execl("/bin/rm", "-rf", path, (char *) NULL);
+}
+
+static pid_t clone(int cfd) {
+	struct clone_args args;
+	memset(&args, 0, sizeof(args));
+	args.flags = CLONE_INTO_CGROUP | CLONE_NEWPID | CLONE_NEWNS | CLONE_NEWCGROUP;
+	args.exit_signal = SIGCHLD;
+	args.cgroup = cfd;
+	return syscall(SYS_clone3, &args, sizeof(args));
+}
+
 static void cmd_new(int cfd, char *name) {
 	if (file_contains(instances, name)) {
 		write(cfd, "exists\n", 7);
 		return;
 	}
 
-	file_add(instances, name);
-
 	char rootfs[256];
 	snprintf(rootfs, sizeof(rootfs), "%s/%s", ROOT, name);
 	char image[256];
 	snprintf(image, sizeof(image), "%s/%s", ROOT, "image.tar");
 
+	file_add(instances, name);
 	mkdir(rootfs, 0755);
 	clone_tar(image, rootfs);
-
 	write(cfd, "ok\n", 3);
 }
 
@@ -87,10 +85,9 @@ static void cmd_rm(int cfd, char *name) {
 
 	char rootfs[256];
 	snprintf(rootfs, sizeof(rootfs), "%s/%s", ROOT, name);
-	remove_recursive(rootfs);
 
+	clone_rm(rootfs);
 	file_remove(instances, name);
-
 	write(cfd, "ok\n", 3);
 }
 
