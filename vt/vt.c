@@ -30,9 +30,11 @@ static void handle_sigusr1(int signo) {
 	State *state = get_state();
 	pthread_mutex_lock(&state->lock);
 	int allow = !state->ctl;
+    printf("%d\n", allow);
 	pthread_mutex_unlock(&state->lock);
 
-    if (ioctl(tty63, VT_RELDISP, allow) < 0)
+    // If the controlling terminal dies, you lose the rights to do RELDISP
+    if (ioctl(tty63, VT_RELDISP, 0) < 0)
         die("VT_RELDISP deny");
 }
 

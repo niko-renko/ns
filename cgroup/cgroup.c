@@ -31,7 +31,7 @@ void configure_cgroup(void) {
 		die("cgroup");
 
     snprintf(cgpath, sizeof(cgpath), "%s/%s", CGROUP_ROOT, CGROUP_NAME);
-	if (mkdir(cgpath, 0755) == -1)
+	if (mkdir(cgpath, 0755) == -1 && errno != EEXIST)
 		die("mkdir");
 }
 
