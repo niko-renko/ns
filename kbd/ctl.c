@@ -60,7 +60,7 @@ void ctl(void) {
 	// Freeze active
 	State *state = get_state();
 	pthread_mutex_lock(&state->lock);
-	if (!state->ctl) {
+	if (state->ctl) {
 		pthread_mutex_unlock(&state->lock);
 		return;
 	}
