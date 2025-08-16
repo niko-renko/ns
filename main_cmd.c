@@ -4,10 +4,7 @@
 #include "./cmd/cmd.h"
 
 int main(void) {
-	State state = {
-		.lock = PTHREAD_MUTEX_INITIALIZER,
-		.ctl = 0
-	};
-    set_state(&state);
+	State *state = init_state();
+    set_state(state);
     cmd(0, 1);
 }

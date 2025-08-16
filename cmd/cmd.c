@@ -123,6 +123,11 @@ static void cmd_rm(int out, char *name) {
 }
 
 static void cmd_run(int out, char *name) {
+	if (!file_contains(instances, name)) {
+		write(out, "notfound\n", 9);
+		return;
+	}
+
 	State *state = get_state();
 	pthread_mutex_lock(&state->lock);
 	state->ctl = 0;
