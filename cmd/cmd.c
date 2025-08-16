@@ -138,18 +138,16 @@ static void cmd_run(int out, char *name) {
 	//}
 	//if (instance == -1)
 	//	instance = add_instance(state, name);
-	char buf[32];
-	snprintf(buf, sizeof(buf), "%d", (int)state->ctl);
-	write(out, buf, sizeof(buf));
 	kill(state->ctl, SIGKILL);
+	set_vt_mode();
 	state->ctl = 0;
 	// state->active = instance;
 	pthread_mutex_unlock(&state->lock);
 
-	//int cgroup = new_cgroup(name);
-	//clone_init(cgroup, name);
-	//switch_vt(1);
-	// write(out, "ok\n", 3);
+	int cgroup = new_cgroup(name);
+	clone_init(cgroup, name);
+	switch_vt(1);
+	write(out, "ok\n", 3);
 }
 
 static void accept_cmd(int out, char *line, int n) {

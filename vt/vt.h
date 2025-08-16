@@ -1,7 +1,8 @@
 #ifndef VT_H
 #define VT_H
 
-void configure_vt(void);
+void set_vt_mode(void);
+void set_sigaction(void);
 void switch_vt(int);
 
 #endif

@@ -12,7 +12,7 @@ int main(void) {
 	State *state = init_state();
 	set_state(state);
 
-	configure_vt();
+	set_sigaction();
 	configure_cgroup();
 
 	spawn_kbd();

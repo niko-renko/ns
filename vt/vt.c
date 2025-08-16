@@ -30,16 +30,16 @@ static void handle_sigusr1(int signo) {
 	State *state = get_state();
 	pthread_mutex_lock(&state->lock);
 	int allow = !state->ctl;
-    printf("%d\n", allow);
 	pthread_mutex_unlock(&state->lock);
 
     // If the controlling terminal dies, you lose the rights to do RELDISP
-    if (ioctl(tty63, VT_RELDISP, 0) < 0)
+    if (ioctl(tty63, VT_RELDISP, allow) < 0)
         die("VT_RELDISP deny");
 }
 
-void configure_vt(void) {
-    tty63 = open("/dev/tty63", O_RDWR | O_NOCTTY);
+void set_vt_mode(void) {
+    if (tty63 == NULL)
+        tty63 = open("/dev/tty63", O_RDWR | O_NOCTTY);
 
     struct vt_mode mode = {0};
     mode.mode = VT_PROCESS;
@@ -48,6 +48,11 @@ void configure_vt(void) {
 
     if (ioctl(tty63, VT_SETMODE, &mode) < 0)
         die("VT_SETMODE");
+}
+
+void set_sigaction(void) {
+    if (tty63 == NULL)
+        tty63 = open("/dev/tty63", O_RDWR | O_NOCTTY);
 
     struct sigaction sa1 = {0};
     sa1.sa_handler = handle_sigusr1;

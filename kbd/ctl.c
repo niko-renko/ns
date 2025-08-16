@@ -64,6 +64,7 @@ void ctl(void) {
 		pthread_mutex_unlock(&state->lock);
 		return;
 	}
+	set_vt_mode();
 	state->ctl = clone_shell();
 	pthread_mutex_unlock(&state->lock);
 	switch_vt(63);
