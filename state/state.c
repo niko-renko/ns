@@ -1,6 +1,7 @@
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "../common.h"
 #include "state.h"
@@ -19,8 +20,6 @@ State *init_state(void) {
     state->ctl = 0;
     state->instances_n = 0;
     state->instances = malloc(128 * sizeof(char *));
-    for (int i = 0; i < 128; i++)
-        state->instances[i] = malloc(128);
     state->active = 0;
     return state;
 }
@@ -32,4 +31,22 @@ void set_state(State *state) {
 
 State *get_state(void) {
     return pthread_getspecific(state_key);
+}
+
+int get_instance(State *state, const char *name) {
+    for (int i = 0; i < state->instances_n; i++) {
+        if (strcmp(state->instances[i], name) == 0)
+            return i;
+    }
+    return -1;
+}
+
+int add_instance(State *state, const char *name) {
+    if (state->instances_n >= 128)
+        return -1;
+
+    state->instances[state->instances_n] = malloc(strlen(name) + 1);
+    strcpy(state->instances[state->instances_n], name);
+    state->instances_n++;
+    return state->instances_n - 1;
 }

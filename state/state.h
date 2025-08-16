@@ -3,7 +3,7 @@
 
 typedef struct state {
     pthread_mutex_t lock;
-    int ctl;
+    pid_t ctl;
     int instances_n;
     char **instances;
     int active;
@@ -12,5 +12,7 @@ typedef struct state {
 State *init_state(void);
 void set_state(State *);
 State *get_state(void);
+int get_instance(State *, const char *);
+int add_instance(State *, const char *);
 
 #endif

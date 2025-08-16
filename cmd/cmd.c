@@ -130,12 +130,22 @@ static void cmd_run(int out, char *name) {
 
 	State *state = get_state();
 	pthread_mutex_lock(&state->lock);
+	//int instance = get_instance(state, name);
+	//if (instance == state->active) {
+	//	write(out, "active\n", 7);
+	//	pthread_mutex_unlock(&state->lock);
+	//	return;
+	//}
+	//if (instance == -1)
+	//	instance = add_instance(state, name);
+	kill(state->ctl, SIGKILL);
 	state->ctl = 0;
+	// state->active = instance;
 	pthread_mutex_unlock(&state->lock);
 
-	switch_vt(1);
 	int cgroup = new_cgroup(name);
 	clone_init(cgroup, name);
+	switch_vt(1);
 	write(out, "ok\n", 3);
 }
 

@@ -31,7 +31,6 @@ pid_t clone_shell() {
     if (pid > 0)
         return pid;
 	clean_fds();
-	switch_vt(63);
 
 	if (setsid() < 0)
 		die("setsid");
@@ -45,10 +44,12 @@ pid_t clone_shell() {
 
     if (ioctl(tty63, TIOCSCTTY, (void *)1) < 0) 
         die("TIOCSCTTY");
+	// TODO: This is not process configuration
 	if (ioctl(tty63, KDSETMODE, KD_TEXT) < 0)
 		die("KD_TEXT");
 	if (ioctl(tty63, KDSKBMODE, K_UNICODE) < 0)
 		die("KDSKBMODE");
+	// TODO: This is not process configuration
 
 	setenv("PATH", "/bin:/usr/bin", 1);
 	setenv("HOME", "/root", 1);
@@ -59,13 +60,11 @@ void ctl(void) {
 	// Freeze active
 	State *state = get_state();
 	pthread_mutex_lock(&state->lock);
-	if (state->ctl == 1) {
+	if (!state->ctl) {
 		pthread_mutex_unlock(&state->lock);
 		return;
 	}
-	state->ctl = 1;
+	state->ctl = clone_shell();
 	pthread_mutex_unlock(&state->lock);
-
-	pid_t pid = clone_shell();
-	return;
+	switch_vt(63);
 }
