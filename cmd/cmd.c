@@ -6,6 +6,7 @@
 #include <errno.h>
 #include <signal.h>
 #include <pthread.h>
+#include <limits.h>
 
 #include <linux/input.h>
 #include <linux/vt.h>
@@ -37,6 +38,8 @@ static void clone_tar(const char *tar, const char *dest) {
 	if (pid > 0)
 		if (waitpid(pid, NULL, 0) == -1)
 			die("waitpid");
+		else
+			return;
 	clean_fds();
 	execl("/bin/tar", "tar", "xf", tar, "--strip-components=1", "-C", dest, (char *) NULL);
 }
@@ -48,77 +51,33 @@ static void clone_rm(const char *path) {
 	if (pid > 0)
 		if (waitpid(pid, NULL, 0) == -1)
 			die("waitpid");
+		else
+			return;
 	clean_fds();
-	execl("/bin/rm", "-rf", path, (char *) NULL);
+	execl("/bin/rm", "rm", "-rf", path, (char *) NULL);
 }
 
-static pid_t clone(int cfd) {
+static void clone_init(int cgroup, const char *name) {
 	struct clone_args args;
 	memset(&args, 0, sizeof(args));
 	args.flags = CLONE_INTO_CGROUP | CLONE_NEWPID | CLONE_NEWNS | CLONE_NEWCGROUP;
 	args.exit_signal = SIGCHLD;
-	args.cgroup = cfd;
-	return syscall(SYS_clone3, &args, sizeof(args));
-}
-
-static void cmd_new(int cfd, char *name) {
-	if (file_contains(instances, name)) {
-		write(cfd, "exists\n", 7);
+	args.cgroup = cgroup;
+	pid_t pid = syscall(SYS_clone3, &args, sizeof(args));
+    if (pid < 0)
+        die("fork");
+	if (pid > 0)
 		return;
-	}
-
-	char rootfs[256];
-	snprintf(rootfs, sizeof(rootfs), "%s/%s", ROOT, name);
-	char image[256];
-	snprintf(image, sizeof(image), "%s/%s", ROOT, "image.tar");
-
-	file_add(instances, name);
-	mkdir(rootfs, 0755);
-	clone_tar(image, rootfs);
-	write(cfd, "ok\n", 3);
-}
-
-static void cmd_rm(int cfd, char *name) {
-	if (!file_contains(instances, name)) {
-		write(cfd, "notfound\n", 9);
-		return;
-	}
-
-	char rootfs[256];
-	snprintf(rootfs, sizeof(rootfs), "%s/%s", ROOT, name);
-
-	clone_rm(rootfs);
-	file_remove(instances, name);
-	write(cfd, "ok\n", 3);
-}
-
-static void cmd_run(int cfd, char *name) {
-	State *state = get_state();
-	pthread_mutex_lock(&state->lock);
-	state->ctl = 0;
-	pthread_mutex_unlock(&state->lock);
-
-	switch_vt(1);
-
-	int cgroup = new_cgroup(name);
-	pid_t pid = clone(cgroup);
-	if (pid < 0)
-		die("clone3");
-	if (pid > 0) {
-		close(cgroup);
-		write(cfd, "ok\n", 3);
-		return;
-	}
 	clean_fds();
+
+	char rootfs[256];
+	char rootfsmnt[256];
+
+	snprintf(rootfs, sizeof(rootfs), "%s/%s", ROOT, name);
+	snprintf(rootfsmnt, sizeof(rootfsmnt), "%s/mnt", rootfs);
 
 	if (mount(NULL, "/", NULL, MS_REC | MS_PRIVATE, NULL) < 0)
 	    die("mount MS_PRIVATE failed");
-
-	char rootfs[256];
-	snprintf(rootfs, sizeof(rootfs), "%s/%s", ROOT, name);
-
-	char rootfsmnt[256];
-	snprintf(rootfsmnt, sizeof(rootfsmnt), "%s/%s/mnt", ROOT, name);
 
 	if (mount(rootfs, rootfs, NULL, MS_BIND | MS_REC, NULL) < 0)
 		die("bind /mnt/newroot");
@@ -132,12 +91,50 @@ static void cmd_run(int cfd, char *name) {
 	execl("/sbin/init", "init", (char *)NULL);
 }
 
-static void accept_cmd(int cfd, char *line, int n) {
-	if (instances == NULL) {
-		instances = malloc(256);
-    	snprintf(instances, 256, "%s/%s", ROOT, "instances");
+static void cmd_new(int out, char *name) {
+	if (file_contains(instances, name)) {
+		write(out, "exists\n", 7);
+		return;
 	}
 
+	char rootfs[256];
+	char image[256];
+	snprintf(rootfs, sizeof(rootfs), "%s/%s", ROOT, name);
+	snprintf(image, sizeof(image), "%s/%s", ROOT, "image.tar");
+
+	file_add(instances, name);
+	mkdir(rootfs, 0755);
+	clone_tar(image, rootfs);
+	write(out, "ok\n", 3);
+}
+
+static void cmd_rm(int out, char *name) {
+	if (!file_contains(instances, name)) {
+		write(out, "notfound\n", 9);
+		return;
+	}
+
+	char rootfs[256];
+	snprintf(rootfs, sizeof(rootfs), "%s/%s", ROOT, name);
+
+	clone_rm(rootfs);
+	file_remove(instances, name);
+	write(out, "ok\n", 3);
+}
+
+static void cmd_run(int out, char *name) {
+	State *state = get_state();
+	pthread_mutex_lock(&state->lock);
+	state->ctl = 0;
+	pthread_mutex_unlock(&state->lock);
+
+	switch_vt(1);
+	int cgroup = new_cgroup(name);
+	clone_init(cgroup, name);
+	write(out, "ok\n", 3);
+}
+
+static void accept_cmd(int out, char *line, int n) {
 	line[n] = '\0';
 	char *nl = strchr(line, '\n');
 	if (nl) *nl = '\0';
@@ -148,16 +145,19 @@ static void accept_cmd(int cfd, char *line, int n) {
 		return;
 
 	if (strcmp(cmd, "new") == 0)
-		cmd_new(cfd, arg);
+		cmd_new(out, arg);
 	if (strcmp(cmd, "rm") == 0)
-		cmd_rm(cfd, arg);
+		cmd_rm(out, arg);
 	if (strcmp(cmd, "run") == 0)
-		cmd_run(cfd, arg);
+		cmd_run(out, arg);
 }
 
 void cmd(int in, int out) {
 	char buf[256];
     int n;
+
+	instances = malloc(PATH_MAX);
+   	snprintf(instances, PATH_MAX, "%s/%s", ROOT, "instances");
 
 	while ((n = read(in, buf, sizeof(buf) - 1)) > 0)
         accept_cmd(out, buf, n);
