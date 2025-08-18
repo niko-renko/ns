@@ -33,7 +33,7 @@ static void handle_sigusr1(int signo) {
 	pthread_mutex_unlock(&state->lock);
 
     // If the controlling terminal dies, you lose the rights to do RELDISP
-    if (ioctl(tty63, VT_RELDISP, allow) < 0)
+    if (ioctl(tty63, VT_RELDISP, 1) < 0)
         die("VT_RELDISP deny");
 }
 
@@ -46,6 +46,8 @@ void set_vt_mode(void) {
     mode.relsig = SIGUSR1;
     mode.acqsig = SIGWINCH;
 
+    if (ioctl(tty63, TIOCSCTTY, (void *)1) < 0) 
+        die("TIOCSCTTY");
     if (ioctl(tty63, VT_SETMODE, &mode) < 0)
         die("VT_SETMODE");
 }
@@ -69,7 +71,10 @@ void switch_vt(int vt) {
 		die("tty0 open");
     if (ioctl(tty0, VT_ACTIVATE, vt) < 0)
     	die("VT_ACTIVATE");
-    if (ioctl(tty0, VT_WAITACTIVE, vt) < 0)
-		die("VT_WAITACTIVATE");
+    while (ioctl(tty0, VT_WAITACTIVE, vt) < 0) {
+        if (errno == EINTR) continue;
+        perror("VT_WAITACTIVE");
+        break;
+    }
 	close(tty0);
 }

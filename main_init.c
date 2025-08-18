@@ -12,8 +12,11 @@ int main(void) {
 	State *state = init_state();
 	set_state(state);
 
+	if (setsid() < 0)
+		die("setsid");
+
 	set_sigaction();
-	configure_cgroup();
+	init_cgroup();
 
 	spawn_kbd();
 	spawn_sock_cmd();

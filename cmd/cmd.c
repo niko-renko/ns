@@ -57,6 +57,21 @@ static void clone_rm(const char *path) {
 	execl("/bin/rm", "rm", "-rf", path, (char *) NULL);
 }
 
+static void clone_pkill(int sid) {
+	pid_t pid = fork();
+    if (pid < 0)
+        die("fork");
+	if (pid > 0)
+		if (waitpid(pid, NULL, 0) == -1)
+			die("waitpid");
+		else
+			return;
+	clean_fds();
+    char ssid[12];
+    sprintf(ssid, "%d", sid);
+	execl("/bin/pkill", "pkill", "-9", "-s", ssid, (char *) NULL);
+}
+
 static void clone_init(int cgroup, const char *name) {
 	struct clone_args args;
 	memset(&args, 0, sizeof(args));
@@ -138,16 +153,18 @@ static void cmd_run(int out, char *name) {
 	//}
 	//if (instance == -1)
 	//	instance = add_instance(state, name);
-	kill(state->ctl, SIGKILL);
+	printf("%d\n", state->ctl);
+	clone_pkill(state->ctl);
 	set_vt_mode();
 	state->ctl = 0;
 	// state->active = instance;
 	pthread_mutex_unlock(&state->lock);
 
-	int cgroup = new_cgroup(name);
-	clone_init(cgroup, name);
-	switch_vt(1);
 	write(out, "ok\n", 3);
+	switch_vt(1);
+
+	//int cgroup = new_cgroup(name);
+	//clone_init(cgroup, name);
 }
 
 static void accept_cmd(int out, char *line, int n) {
