@@ -24,7 +24,36 @@
 #include "../state/state.h"
 #include "../vt/vt.h"
 
-pid_t clone_shell() {
+static int _denyfd;
+
+static void clone_shell() {
+    pid_t pid = fork();
+    if (pid < 0)
+        die("fork");
+    if (pid > 0)
+        return;
+	clean_fds();
+
+    int tty63 = open("/dev/tty63", O_RDWR | O_NOCTTY);
+    if (tty63 < 0)
+        die("tty63 open");
+	dup2(tty63, STDOUT_FILENO);
+	dup2(tty63, STDERR_FILENO);
+
+	setenv("PATH", "/bin:/usr/bin", 1);
+	setenv("HOME", "/root", 1);
+    printf("here\n");
+	execl("/bin/bash", "bash", (char *)NULL);
+}
+
+static void handle_sigusr1(int signo) {
+    (void)signo;
+    printf("signal\n");
+    if (ioctl(_denyfd, VT_RELDISP, 1) < 0)
+        die("VT_RELDISP deny");
+}
+
+static pid_t clone_ctl() {
     pid_t pid = fork();
     if (pid < 0)
         die("fork");
@@ -38,22 +67,30 @@ pid_t clone_shell() {
     int tty63 = open("/dev/tty63", O_RDWR | O_NOCTTY);
     if (tty63 < 0)
         die("tty63 open");
-
-	dup2(tty63, STDOUT_FILENO);
-	dup2(tty63, STDERR_FILENO);
-
     if (ioctl(tty63, TIOCSCTTY, (void *)1) < 0) 
         die("TIOCSCTTY");
-	// TODO: This is not process configuration
 	if (ioctl(tty63, KDSETMODE, KD_TEXT) < 0)
 		die("KD_TEXT");
 	if (ioctl(tty63, KDSKBMODE, K_UNICODE) < 0)
 		die("KDSKBMODE");
-	// TODO: This is not process configuration
 
-	setenv("PATH", "/bin:/usr/bin", 1);
-	setenv("HOME", "/root", 1);
-	execl("/bin/bash", "bash", (char *)NULL);
+    struct vt_mode mode = {0};
+    mode.mode = VT_PROCESS;
+    mode.relsig = SIGUSR1;
+    mode.acqsig = SIGWINCH;
+    if (ioctl(tty63, VT_SETMODE, &mode) < 0)
+        die("VT_SETMODE");
+
+    struct sigaction sa1 = {0};
+    sa1.sa_handler = handle_sigusr1;
+    sigemptyset(&sa1.sa_mask);
+    sa1.sa_flags = 0;
+
+	_denyfd = tty63;
+    if (sigaction(SIGUSR1, &sa1, NULL) < 0)
+        die("sigaction SIGUSR1");
+	clone_shell();
+	for (;;) pause();
 }
 
 void ctl(void) {
@@ -64,8 +101,7 @@ void ctl(void) {
 		pthread_mutex_unlock(&state->lock);
 		return;
 	}
-	set_vt_mode();
-	state->ctl = clone_shell();
+	state->ctl = clone_ctl();
 	pthread_mutex_unlock(&state->lock);
 	switch_vt(63);
 }

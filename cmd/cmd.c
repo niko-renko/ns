@@ -155,7 +155,6 @@ static void cmd_run(int out, char *name) {
 	//	instance = add_instance(state, name);
 	printf("%d\n", state->ctl);
 	clone_pkill(state->ctl);
-	set_vt_mode();
 	state->ctl = 0;
 	// state->active = instance;
 	pthread_mutex_unlock(&state->lock);
