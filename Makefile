@@ -1,6 +1,6 @@
 CC = gcc
 CFLAGS = -Wall -Wextra -Wunused -O2
-COMMON = set/*.c cmd/*.c kbd/*.c state/*.c vt/*.c cgroup/*.c common.c
+COMMON = set/*.c cmd/*.c kbd/*.c state/*.c cgroup/*.c common.c
 
 init:
 	$(CC) $(CFLAGS) main_init.c $(COMMON) -o bin/init

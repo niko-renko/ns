@@ -25,7 +25,6 @@
 #include "../state/state.h"
 #include "../set/set.h"
 #include "../cgroup/cgroup.h"
-#include "../vt/vt.h"
 
 #define ROOT "/root/Code"
 
@@ -55,21 +54,6 @@ static void clone_rm(const char *path) {
 			return;
 	clean_fds();
 	execl("/bin/rm", "rm", "-rf", path, (char *) NULL);
-}
-
-static void clone_pkill(int sid) {
-	pid_t pid = fork();
-    if (pid < 0)
-        die("fork");
-	if (pid > 0)
-		if (waitpid(pid, NULL, 0) == -1)
-			die("waitpid");
-		else
-			return;
-	clean_fds();
-    char ssid[12];
-    sprintf(ssid, "%d", sid);
-	execl("/bin/pkill", "pkill", "-9", "-s", ssid, (char *) NULL);
 }
 
 static void clone_init(int cgroup, const char *name) {
@@ -153,7 +137,6 @@ static void cmd_run(int out, char *name) {
 	//}
 	//if (instance == -1)
 	//	instance = add_instance(state, name);
-	printf("%d\n", state->ctl);
 	clone_pkill(state->ctl);
 	state->ctl = 0;
 	// state->active = instance;

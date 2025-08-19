@@ -22,7 +22,6 @@
 
 #include "../common.h"
 #include "../state/state.h"
-#include "../vt/vt.h"
 
 static int _denyfd;
 
@@ -95,10 +94,8 @@ void ctl(void) {
 	// Freeze active
 	State *state = get_state();
 	pthread_mutex_lock(&state->lock);
-	if (state->ctl) {
-		pthread_mutex_unlock(&state->lock);
-		return;
-	}
+	if (state->ctl)
+        clone_pkill(state->ctl);
 	state->ctl = clone_ctl();
 	pthread_mutex_unlock(&state->lock);
 	switch_vt(63);
