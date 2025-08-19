@@ -145,13 +145,13 @@ static void cmd_run(int out, char *name) {
 
 	// TODO: This works, but better to listen to when the ctl is gone
 	// and then make sure the vt goes back to AUTO
-    int tty63 = open("/dev/tty63", O_RDWR | O_NOCTTY);
-    if (tty63 < 0)
-        die("tty63 open");
-    struct vt_mode mode = {0};
-    mode.mode = VT_AUTO;
-    if (ioctl(tty63, VT_SETMODE, &mode) < 0)
-        die("VT_SETMODE");
+    //int tty63 = open("/dev/tty63", O_RDWR | O_NOCTTY);
+    //if (tty63 < 0)
+    //    die("tty63 open");
+    //struct vt_mode mode = {0};
+    //mode.mode = VT_AUTO;
+    //if (ioctl(tty63, VT_SETMODE, &mode) < 0)
+    //    die("VT_SETMODE");
 
 	write(out, "ok\n", 3);
 	switch_vt(1);

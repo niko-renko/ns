@@ -90,6 +90,34 @@ static pid_t clone_ctl() {
 	for (;;) pause();
 }
 
+struct release_args {
+    pid_t ctl;
+};
+
+static void *release(void *arg) {
+    struct release_args *args = arg;
+	if (waitpid(args->ctl, NULL, 0) == -1)
+		die("waitpid");
+    int tty63 = open("/dev/tty63", O_RDWR | O_NOCTTY);
+    if (tty63 < 0)
+        die("tty63 open");
+    struct vt_mode mode = {0};
+    mode.mode = VT_AUTO;
+    if (ioctl(tty63, VT_SETMODE, &mode) < 0)
+        die("VT_SETMODE");
+    close(tty63);
+    return NULL;
+}
+
+static void spawn_release(pid_t ctl) {
+    pthread_t sock_cmd_t;
+    struct release_args *args = malloc(sizeof(*args));
+    args->ctl = ctl;
+    if (pthread_create(&sock_cmd_t, NULL, release, args) != 0)
+        die("pthread_create");
+    return;
+}
+
 void ctl(void) {
 	// Freeze active
 	State *state = get_state();
@@ -98,5 +126,6 @@ void ctl(void) {
         clone_pkill(state->ctl);
 	state->ctl = clone_ctl();
 	pthread_mutex_unlock(&state->lock);
+    spawn_release(state->ctl);
 	switch_vt(63);
 }
