@@ -42,14 +42,12 @@ static void clone_shell() {
 
 	setenv("PATH", "/bin:/usr/bin", 1);
 	setenv("HOME", "/root", 1);
-    printf("here\n");
 	execl("/bin/bash", "bash", (char *)NULL);
 }
 
 static void handle_sigusr1(int signo) {
     (void)signo;
-    printf("signal\n");
-    if (ioctl(_denyfd, VT_RELDISP, 1) < 0)
+    if (ioctl(_denyfd, VT_RELDISP, 0) < 0)
         die("VT_RELDISP deny");
 }
 

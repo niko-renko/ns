@@ -13,13 +13,6 @@ int main(void) {
 	State *state = init_state();
 	set_state(state);
 
-	clean_fds();
-    int console = open("/dev/tty9", O_RDWR);
-    if (console < 0)
-        die("console open");
-	dup2(console, STDOUT_FILENO);
-	dup2(console, STDERR_FILENO);
-
 	init_cgroup();
 	spawn_kbd();
 	spawn_sock_cmd();
