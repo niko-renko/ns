@@ -24,6 +24,7 @@
 #include "../common.h"
 #include "../state/state.h"
 #include "../set/set.h"
+#include "../ctl/ctl.h"
 #include "../cgroup/cgroup.h"
 
 #define ROOT "/root/Code"
@@ -127,8 +128,9 @@ static void cmd_run(int out, char *name) {
 		return;
 	}
 
-	State *state = get_state();
-	pthread_mutex_lock(&state->lock);
+	write(out, "ok\n", 3);
+	stop_ctl();
+
 	//int instance = get_instance(state, name);
 	//if (instance == state->active) {
 	//	write(out, "active\n", 7);
@@ -137,24 +139,7 @@ static void cmd_run(int out, char *name) {
 	//}
 	//if (instance == -1)
 	//	instance = add_instance(state, name);
-	clone_pkill(state->ctl);
-	state->ctl = 0;
 	// state->active = instance;
-	pthread_mutex_unlock(&state->lock);
-
-
-	// TODO: This works, but better to listen to when the ctl is gone
-	// and then make sure the vt goes back to AUTO
-    //int tty63 = open("/dev/tty63", O_RDWR | O_NOCTTY);
-    //if (tty63 < 0)
-    //    die("tty63 open");
-    //struct vt_mode mode = {0};
-    //mode.mode = VT_AUTO;
-    //if (ioctl(tty63, VT_SETMODE, &mode) < 0)
-    //    die("VT_SETMODE");
-
-	write(out, "ok\n", 3);
-	switch_vt(1);
 
 	//int cgroup = new_cgroup(name);
 	//clone_init(cgroup, name);

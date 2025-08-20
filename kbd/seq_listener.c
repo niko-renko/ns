@@ -12,6 +12,7 @@
 
 #include "../common.h"
 #include "../state/state.h"
+#include "../ctl/ctl.h"
 
 void ctl(void);
 
@@ -44,7 +45,7 @@ static void *seq_listener(void *arg) {
                     alt = ev.value;
                 else if (ev.code == KEY_J && ev.value == 1)
                     if (ctrl && alt)
-                        ctl();
+                        start_ctl();
             }
         } else if (n < 0) {
             if (errno == EAGAIN || errno == EWOULDBLOCK) {
