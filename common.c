@@ -21,7 +21,7 @@
 
 void die(const char *msg) {
 	perror(msg);
-	//exit(1);
+	exit(1);
 }
 
 void clean_fds(void) {

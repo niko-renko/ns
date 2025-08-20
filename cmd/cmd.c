@@ -141,8 +141,8 @@ static void cmd_run(int out, char *name) {
 	//	instance = add_instance(state, name);
 	// state->active = instance;
 
-	//int cgroup = new_cgroup(name);
-	//clone_init(cgroup, name);
+	int cgroup = new_cgroup(name);
+	clone_init(cgroup, name);
 }
 
 static void accept_cmd(int out, char *line, int n) {

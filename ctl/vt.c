@@ -30,7 +30,7 @@ void vt_switch(int vt) {
     	die("VT_ACTIVATE");
     while (ioctl(tty0, VT_WAITACTIVE, vt) < 0) {
         if (errno == EINTR) continue;
-        perror("VT_WAITACTIVE");
+        die("VT_WAITACTIVE");
         break;
     }
 	close(tty0);
