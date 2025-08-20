@@ -21,15 +21,16 @@ struct seq_listener_args {
 };
 
 static void on_seq() {
+    start_ctl();
+
     State *state = get_state();
 	pthread_mutex_lock(&state->lock);
     if (state->active == -1)
-        goto exit;
+        goto unlock;
     char *instance = state->instances[state->active];
     freeze_cgroup(instance);
-exit:
+unlock:
 	pthread_mutex_unlock(&state->lock);
-    start_ctl();
 }
 
 static void *seq_listener(void *arg) {

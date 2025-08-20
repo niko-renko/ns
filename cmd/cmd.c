@@ -128,7 +128,7 @@ static void cmd_run(int out, char *name) {
 		return;
 	}
 
-    State *state = get_state();
+	State *state = get_state();
 	pthread_mutex_lock(&state->lock);
 
 	int instance = get_instance(state, name);
