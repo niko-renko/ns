@@ -128,21 +128,27 @@ static void cmd_run(int out, char *name) {
 		return;
 	}
 
-	write(out, "ok\n", 3);
-	stop_ctl();
+    State *state = get_state();
+	pthread_mutex_lock(&state->lock);
 
-	//int instance = get_instance(state, name);
+	int instance = get_instance(state, name);
 	//if (instance == state->active) {
 	//	write(out, "active\n", 7);
 	//	pthread_mutex_unlock(&state->lock);
 	//	return;
 	//}
-	//if (instance == -1)
-	//	instance = add_instance(state, name);
-	// state->active = instance;
+	if (instance == -1)
+		instance = add_instance(state, name);
+	state->active = instance;
+
+	pthread_mutex_unlock(&state->lock);
+
+	write(out, "ok\n", 3);
+	stop_ctl();
 
 	int cgroup = new_cgroup(name);
 	clone_init(cgroup, name);
+	close(cgroup);
 }
 
 static void accept_cmd(int out, char *line, int n) {

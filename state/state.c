@@ -20,7 +20,7 @@ State *init_state(void) {
     state->ctl = 0;
     state->instances_n = 0;
     state->instances = malloc(128 * sizeof(char *));
-    state->active = 0;
+    state->active = -1;
     return state;
 }
 

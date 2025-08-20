@@ -48,3 +48,15 @@ int new_cgroup(char *name) {
 
 	return fd;
 }
+
+void freeze_cgroup(char *name) {
+	char freeze_path[PATH_MAX];
+
+    snprintf(freeze_path, sizeof(freeze_path), "%s/%s/%s/cgroup.freeze", CGROUP_ROOT, CGROUP_NAME, name);
+	int fd = open(freeze_path, O_WRONLY);
+	if (fd < 0)
+		die("cgroup.freeze open");
+	if (write(fd, "1", 1) != 1)
+		die("freeze write");
+	close(fd);
+}
