@@ -28,7 +28,7 @@ static void on_seq() {
     if (state->active == -1)
         goto unlock;
     char *instance = state->instances[state->active];
-    freeze_cgroup(instance);
+    set_frozen_cgroup(instance, 1);
 unlock:
 	pthread_mutex_unlock(&state->lock);
 }

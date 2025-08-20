@@ -6,6 +6,6 @@
 
 void init_cgroup(void);
 int new_cgroup(char *);
-void freeze_cgroup(char *);
+void set_frozen_cgroup(char *, int);
 
 #endif
