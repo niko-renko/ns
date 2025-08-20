@@ -67,9 +67,8 @@ static void *sock_cmd(void *arg) {
 	unlink(SOCK_PATH);
 }
 
-void spawn_sock_cmd() {
+void spawn_sock_cmd(void) {
     pthread_t sock_cmd_t;
     if (pthread_create(&sock_cmd_t, NULL, sock_cmd, get_state()) != 0)
         die("pthread_create");
-    return;
 }

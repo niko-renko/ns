@@ -2,6 +2,6 @@
 #define CMD_H
 
 void cmd(int, int);
-void spawn_sock_cmd();
+void spawn_sock_cmd(void);
 
 #endif
