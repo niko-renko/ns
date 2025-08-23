@@ -18,9 +18,8 @@ State *init_state(void) {
     if(pthread_mutex_init(&state->lock, NULL) != 0)
         die("mutex_init");
     state->ctl = 0;
-    state->instances_n = 0;
-    state->instances = malloc(128 * sizeof(char *));
-    state->active = -1;
+    state->instance = malloc(256);
+    state->instance[0] = '\0';
     return state;
 }
 
@@ -31,22 +30,4 @@ void set_state(State *state) {
 
 State *get_state(void) {
     return pthread_getspecific(state_key);
-}
-
-int get_instance(State *state, const char *name) {
-    for (int i = 0; i < state->instances_n; i++) {
-        if (strcmp(state->instances[i], name) == 0)
-            return i;
-    }
-    return -1;
-}
-
-int add_instance(State *state, const char *name) {
-    if (state->instances_n >= 128)
-        return -1;
-
-    state->instances[state->instances_n] = malloc(strlen(name) + 1);
-    strcpy(state->instances[state->instances_n], name);
-    state->instances_n++;
-    return state->instances_n - 1;
 }

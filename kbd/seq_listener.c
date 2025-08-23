@@ -20,17 +20,14 @@ struct seq_listener_args {
     char device_path[PATH_MAX];
 };
 
-static void on_seq() {
-    start_ctl();
-
+void on_ctl(){
     State *state = get_state();
 	pthread_mutex_lock(&state->lock);
-    if (state->active == -1)
-        goto unlock;
-    char *instance = state->instances[state->active];
-    set_frozen_cgroup(instance, 1);
-unlock:
+    if (state->instance[0] != '\0')
+        set_frozen_cgroup(state->instance, 1);
 	pthread_mutex_unlock(&state->lock);
+
+    start_ctl();
 }
 
 static void *seq_listener(void *arg) {
@@ -59,7 +56,7 @@ static void *seq_listener(void *arg) {
             alt = ev.value;
         else if (ev.code == KEY_J && ev.value == 1)
             if (ctrl && alt)
-                on_seq();
+                on_ctl();
     }
 
     close(fd);

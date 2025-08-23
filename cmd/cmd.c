@@ -30,6 +30,8 @@
 #define ROOT "/root/Code"
 
 static char *instances = NULL;
+static char *OK = "ok\n";
+static char *NEXIST = "nonexistent\n";
 
 static void clone_tar(const char *tar, const char *dest) {
 	pid_t pid = fork();
@@ -93,7 +95,7 @@ static void clone_init(int cgroup, const char *name) {
 
 static void cmd_new(int out, char *name) {
 	if (file_contains(instances, name)) {
-		write(out, "exists\n", 7);
+		write(out, NEXIST, strlen(NEXIST));
 		return;
 	}
 
@@ -105,12 +107,14 @@ static void cmd_new(int out, char *name) {
 	file_add(instances, name);
 	mkdir(rootfs, 0755);
 	clone_tar(image, rootfs);
-	write(out, "ok\n", 3);
+	sync();
+
+	write(out, OK, strlen(OK));
 }
 
 static void cmd_rm(int out, char *name) {
 	if (!file_contains(instances, name)) {
-		write(out, "notfound\n", 9);
+		write(out, NEXIST, strlen(NEXIST));
 		return;
 	}
 
@@ -119,37 +123,33 @@ static void cmd_rm(int out, char *name) {
 
 	clone_rm(rootfs);
 	file_remove(instances, name);
-	write(out, "ok\n", 3);
+	write(out, OK, strlen(OK));
 }
 
 static void cmd_run(int out, char *name) {
 	if (!file_contains(instances, name)) {
-		write(out, "notfound\n", 9);
+		write(out, NEXIST, strlen(NEXIST));
 		return;
 	}
 
 	State *state = get_state();
 	pthread_mutex_lock(&state->lock);
-
-	int instance = get_instance(state, name);
-	int existed = instance != -1;
-	if (!existed)
-		instance = add_instance(state, name);
-	state->active = instance;
-
-	pthread_mutex_unlock(&state->lock);
-
-	write(out, "ok\n", 3);
-	stop_ctl();
-
-	if (existed) {
-		set_frozen_cgroup(name, 0);
-		return;
-	}
-
+	// This instance is running
+	if (strcmp(name, state->instance) == 0)
+		goto out;
+	// Another instance is running
+	if (state->instance[0] != '\0')
+		kill_cgroup(name);
 	int cgroup = new_cgroup(name);
 	clone_init(cgroup, name);
+	strcpy(state->instance, name);
 	close(cgroup);
+
+out:
+    set_frozen_cgroup(state->instance, 0);
+	pthread_mutex_unlock(&state->lock);
+	write(out, OK, strlen(OK));
+	stop_ctl();
 }
 
 static void accept_cmd(int out, char *line, int n) {

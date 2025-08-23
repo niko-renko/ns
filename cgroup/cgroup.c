@@ -61,3 +61,14 @@ void set_frozen_cgroup(char *name, int frozen) {
 		die("freeze write");
 	close(fd);
 }
+
+void kill_cgroup(char *name) {
+	char kill_path[PATH_MAX];
+    snprintf(kill_path, sizeof(kill_path), "%s/%s/%s/cgroup.kill", CGROUP_ROOT, CGROUP_NAME, name);
+	int fd = open(kill_path, O_WRONLY);
+	if (fd < 0)
+		die("cgroup.kill open");
+	if (write(fd, "0", 1) != 1)
+		die("kill write");
+	close(fd);
+}

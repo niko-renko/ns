@@ -7,5 +7,6 @@
 void init_cgroup(void);
 int new_cgroup(char *);
 void set_frozen_cgroup(char *, int);
+void kill_cgroup(char *);
 
 #endif
