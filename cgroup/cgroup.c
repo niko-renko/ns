@@ -37,16 +37,20 @@ void init_cgroup(void) {
 
 int new_cgroup(char *name) {
 	char cgpath[PATH_MAX];
-
     snprintf(cgpath, sizeof(cgpath), "%s/%s/%s", CGROUP_ROOT, CGROUP_NAME, name);
 	if (mkdir(cgpath, 0755) == -1)
 		die("mkdir");
-
 	int fd = open(cgpath, O_DIRECTORY);
 	if (fd < 0)
 		die("cgroup open");
-
 	return fd;
+}
+
+void rm_cgroup(char *name) {
+	char cgpath[PATH_MAX];
+    snprintf(cgpath, sizeof(cgpath), "%s/%s/%s", CGROUP_ROOT, CGROUP_NAME, name);
+	if (rmdir(cgpath) == -1)
+		die("rmdir");
 }
 
 void set_frozen_cgroup(char *name, int frozen) {
