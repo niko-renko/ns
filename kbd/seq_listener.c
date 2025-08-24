@@ -21,13 +21,13 @@ struct seq_listener_args {
 };
 
 void on_ctl(){
+    start_ctl();
+
     State *state = get_state();
 	pthread_mutex_lock(&state->lock);
     if (state->instance[0] != '\0')
         set_frozen_cgroup(state->instance, 1);
 	pthread_mutex_unlock(&state->lock);
-
-    start_ctl();
 }
 
 static void *seq_listener(void *arg) {
