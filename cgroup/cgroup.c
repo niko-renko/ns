@@ -67,7 +67,7 @@ void kill_cgroup(char *name) {
 	int fd = open(kill_path, O_WRONLY);
 	if (fd < 0)
 		die("cgroup.kill open");
-	if (write(fd, "0", 1) != 1)
+	if (write(fd, "1", 1) != 1)
 		die("kill write");
 	close(fd);
 }
