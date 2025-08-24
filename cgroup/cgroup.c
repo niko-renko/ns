@@ -52,7 +52,6 @@ int new_cgroup(char *name) {
 void set_frozen_cgroup(char *name, int frozen) {
 	char freeze_path[PATH_MAX];
 	char *frozen_str = frozen ? "1" : "0";
-
     snprintf(freeze_path, sizeof(freeze_path), "%s/%s/%s/cgroup.freeze", CGROUP_ROOT, CGROUP_NAME, name);
 	int fd = open(freeze_path, O_WRONLY);
 	if (fd < 0)

@@ -139,10 +139,10 @@ static void cmd_run(int out, char *name) {
 		goto out;
 	// Another instance is running
 	if (state->instance[0] != '\0')
-		kill_cgroup(name);
+		kill_cgroup(state->instance);
+	strcpy(state->instance, name);
 	int cgroup = new_cgroup(name);
 	clone_init(cgroup, name);
-	strcpy(state->instance, name);
 	close(cgroup);
 
 out:
