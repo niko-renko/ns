@@ -27,8 +27,6 @@
 #include "../ctl/ctl.h"
 #include "../cgroup/cgroup.h"
 
-#define ROOT "/root/Code"
-
 static char *instances = NULL;
 static char *OK = "ok\n";
 static char *NEXIST = "nonexistent\n";
