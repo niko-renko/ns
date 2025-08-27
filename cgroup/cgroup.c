@@ -47,6 +47,18 @@ int new_cgroup(char *name) {
 	return fd;
 }
 
+static void rm_poll(char *path) {
+    for (;;) {
+        if (rmdir(path) == 0)
+            break;
+        if (errno == EBUSY)
+	    continue;
+	else
+	    break;
+        usleep(1000);
+    }
+}
+
 static void rm_cgroup_internal(char *path) {
     DIR *dir = opendir(path);
     if (!dir)
@@ -66,19 +78,17 @@ static void rm_cgroup_internal(char *path) {
 
         if (S_ISDIR(st.st_mode)) {
             rm_cgroup_internal(child);
-            if (rmdir(child) == -1)
-				die("rmdir");
+            rm_poll(child);
         }
     }
 
-    if (rmdir(path) == -1)
-	    die("rmdir");
+    rm_poll(path);
     closedir(dir);
 }
 
 void rm_cgroup(char *name) {
 	char cgpath[PATH_MAX];
-    snprintf(cgpath, sizeof(cgpath), "%s/%s/%s", CGROUP_ROOT, CGROUP_NAME, name);
+	snprintf(cgpath, sizeof(cgpath), "%s/%s/%s", CGROUP_ROOT, CGROUP_NAME, name);
 	rm_cgroup_internal(cgpath);
 }
 
