@@ -29,7 +29,6 @@
 #include "../ctl/ctl.h"
 #include "../cgroup/cgroup.h"
 
-static char *instances = NULL;
 static char *OK = "ok\n";
 static char *NEXIST = "nonexistent\n";
 
@@ -94,7 +93,7 @@ static void clone_init(int cgroup, const char *name) {
 
 static void cmd_new(int out, char *name) {
 	char instances[PATH_MAX];
-   	snprintf(instances, PATH_MAX, "%s/%s", ROOT, "instances");
+   	snprintf(instances, PATH_MAX, "%s/instances", ROOT);
 	char rootfs[PATH_MAX];
 	snprintf(rootfs, PATH_MAX, "%s/rootfs/%s", ROOT, name);
 	char image[PATH_MAX];
@@ -115,7 +114,7 @@ static void cmd_new(int out, char *name) {
 
 static void cmd_rm(int out, char *name) {
 	char instances[PATH_MAX];
-   	snprintf(instances, PATH_MAX, "%s/%s", ROOT, "instances");
+   	snprintf(instances, PATH_MAX, "%s/instances", ROOT);
 	char rootfs[PATH_MAX];
 	snprintf(rootfs, sizeof(rootfs), "%s/rootfs/%s", ROOT, name);
 
@@ -131,7 +130,7 @@ static void cmd_rm(int out, char *name) {
 
 static void cmd_run(int out, char *name) {
 	char instances[PATH_MAX];
-   	snprintf(instances, PATH_MAX, "%s/%s", ROOT, "instances");
+   	snprintf(instances, PATH_MAX, "%s/instances", ROOT);
 
 	if (!file_contains(instances, name)) {
 		write(out, NEXIST, strlen(NEXIST));
@@ -185,7 +184,18 @@ static void cmd_ls(int out, char *type) {
     	closedir(dir);
 	}
 	if (strcmp(type, "instance") == 0) {
+		int n;
+		char buf[4096];
+		char instances[PATH_MAX];
+ 	  	snprintf(instances, PATH_MAX, "%s/instances", ROOT);
 
+		int in = open(instances, O_RDONLY);
+		if (in < 0)
+			die("instances open");
+
+		while ((n = read(in, buf, sizeof(buf))) > 0)
+			write(out, buf, n);
+		close(in);
 	}
 }
 
@@ -212,8 +222,6 @@ static void accept_cmd(int out, char *line, int n) {
 void cmd(int in, int out) {
 	char buf[256];
     int n;
-
-	instances = malloc(PATH_MAX);
 
 	while ((n = read(in, buf, sizeof(buf) - 1)) > 0)
         accept_cmd(out, buf, n);
