@@ -7,6 +7,8 @@
 #include <signal.h>
 #include <pthread.h>
 #include <limits.h>
+#include <dirent.h>
+#include <limits.h>
 
 #include <linux/input.h>
 #include <linux/vt.h>
@@ -58,6 +60,11 @@ static void clone_rm(const char *path) {
 }
 
 static void clone_init(int cgroup, const char *name) {
+	char rootfs[PATH_MAX];
+	snprintf(rootfs, PATH_MAX, "%s/rootfs/%s", ROOT, name);
+	char rootfsmnt[PATH_MAX];
+	snprintf(rootfsmnt, PATH_MAX, "%s/mnt", rootfs);
+
 	struct clone_args args;
 	memset(&args, 0, sizeof(args));
 	args.flags = CLONE_INTO_CGROUP | CLONE_NEWPID | CLONE_NEWNS | CLONE_NEWCGROUP;
@@ -69,12 +76,6 @@ static void clone_init(int cgroup, const char *name) {
 	if (pid > 0)
 		return;
 	clean_fds();
-
-	char rootfs[256];
-	char rootfsmnt[256];
-
-	snprintf(rootfs, sizeof(rootfs), "%s/%s", ROOT, name);
-	snprintf(rootfsmnt, sizeof(rootfsmnt), "%s/mnt", rootfs);
 
 	if (mount(NULL, "/", NULL, MS_REC | MS_PRIVATE, NULL) < 0)
 	    die("mount MS_PRIVATE failed");
@@ -92,15 +93,17 @@ static void clone_init(int cgroup, const char *name) {
 }
 
 static void cmd_new(int out, char *name) {
+	char instances[PATH_MAX];
+   	snprintf(instances, PATH_MAX, "%s/%s", ROOT, "instances");
+	char rootfs[PATH_MAX];
+	snprintf(rootfs, PATH_MAX, "%s/rootfs/%s", ROOT, name);
+	char image[PATH_MAX];
+	snprintf(image, PATH_MAX, "%s/images/%s", ROOT, "image.tar");
+
 	if (file_contains(instances, name)) {
 		write(out, NEXIST, strlen(NEXIST));
 		return;
 	}
-
-	char rootfs[256];
-	char image[256];
-	snprintf(rootfs, sizeof(rootfs), "%s/%s", ROOT, name);
-	snprintf(image, sizeof(image), "%s/%s", ROOT, "image.tar");
 
 	file_add(instances, name);
 	mkdir(rootfs, 0755);
@@ -111,13 +114,15 @@ static void cmd_new(int out, char *name) {
 }
 
 static void cmd_rm(int out, char *name) {
+	char instances[PATH_MAX];
+   	snprintf(instances, PATH_MAX, "%s/%s", ROOT, "instances");
+	char rootfs[PATH_MAX];
+	snprintf(rootfs, sizeof(rootfs), "%s/rootfs/%s", ROOT, name);
+
 	if (!file_contains(instances, name)) {
 		write(out, NEXIST, strlen(NEXIST));
 		return;
 	}
-
-	char rootfs[256];
-	snprintf(rootfs, sizeof(rootfs), "%s/%s", ROOT, name);
 
 	clone_rm(rootfs);
 	file_remove(instances, name);
@@ -125,6 +130,9 @@ static void cmd_rm(int out, char *name) {
 }
 
 static void cmd_run(int out, char *name) {
+	char instances[PATH_MAX];
+   	snprintf(instances, PATH_MAX, "%s/%s", ROOT, "instances");
+
 	if (!file_contains(instances, name)) {
 		write(out, NEXIST, strlen(NEXIST));
 		return;
@@ -156,6 +164,31 @@ static void cmd_run(int out, char *name) {
 	close(cgroup);
 }
 
+static void cmd_ls(int out, char *type) {
+	if (strcmp(type, "image") == 0) {
+		char images[PATH_MAX];
+		snprintf(images, PATH_MAX, "%s/images", ROOT);
+
+		DIR *dir = opendir(images);
+    	if (!dir)
+			die("images opendir");
+
+    	struct dirent *de;
+    	while ((de = readdir(dir)) != NULL) {
+    	    if (strcmp(de->d_name, ".") == 0 || strcmp(de->d_name, "..") == 0)
+    	        continue;
+
+    	    write(out, de->d_name, strlen(de->d_name));
+    	    write(out, "\n", 1);
+    	}
+
+    	closedir(dir);
+	}
+	if (strcmp(type, "instance") == 0) {
+
+	}
+}
+
 static void accept_cmd(int out, char *line, int n) {
 	line[n] = '\0';
 	char *nl = strchr(line, '\n');
@@ -172,6 +205,8 @@ static void accept_cmd(int out, char *line, int n) {
 		cmd_rm(out, arg);
 	if (strcmp(cmd, "run") == 0)
 		cmd_run(out, arg);
+	if (strcmp(cmd, "ls") == 0)
+		cmd_ls(out, arg);
 }
 
 void cmd(int in, int out) {
@@ -179,7 +214,6 @@ void cmd(int in, int out) {
     int n;
 
 	instances = malloc(PATH_MAX);
-   	snprintf(instances, PATH_MAX, "%s/%s", ROOT, "instances");
 
 	while ((n = read(in, buf, sizeof(buf) - 1)) > 0)
         accept_cmd(out, buf, n);
