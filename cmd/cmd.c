@@ -135,23 +135,27 @@ static void cmd_run(int out, char *name) {
 	State *state = get_state();
 	pthread_mutex_lock(&state->lock);
 	// This instance is running
-	if (strcmp(name, state->instance) == 0)
-		goto out;
+	if (strcmp(name, state->instance) == 0) {
+    	set_frozen_cgroup(name, 0);
+		pthread_mutex_unlock(&state->lock);
+		write(out, OK, strlen(OK));
+		stop_ctl();
+		return;
+	}
 	// Another instance is running
 	if (state->instance[0] != '\0') {
 		kill_cgroup(state->instance);
 		rm_cgroup(state->instance);
 	}
 	strcpy(state->instance, name);
+	pthread_mutex_unlock(&state->lock);
+
+	write(out, OK, strlen(OK));
+	stop_ctl();
+
 	int cgroup = new_cgroup(name);
 	clone_init(cgroup, name);
 	close(cgroup);
-
-out:
-    set_frozen_cgroup(state->instance, 0);
-	pthread_mutex_unlock(&state->lock);
-	write(out, OK, strlen(OK));
-	stop_ctl();
 }
 
 static void accept_cmd(int out, char *line, int n) {

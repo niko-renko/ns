@@ -7,6 +7,7 @@
 #include <signal.h>
 #include <pthread.h>
 #include <limits.h>
+#include <dirent.h>
 
 #include <linux/input.h>
 #include <linux/vt.h>
@@ -46,11 +47,39 @@ int new_cgroup(char *name) {
 	return fd;
 }
 
+static void rm_cgroup_internal(char *path) {
+    DIR *dir = opendir(path);
+    if (!dir)
+        die("opendir");
+
+    struct dirent *de;
+    while ((de = readdir(dir)) != NULL) {
+        if (strcmp(de->d_name, ".") == 0 || strcmp(de->d_name, "..") == 0)
+            continue;
+
+        char child[PATH_MAX];
+        snprintf(child, sizeof(child), "%s/%s", path, de->d_name);
+
+        struct stat st;
+        if (lstat(child, &st) == -1)
+            die("lstat");
+
+        if (S_ISDIR(st.st_mode)) {
+            rm_cgroup_internal(child);
+            if (rmdir(child) == -1)
+				die("rmdir");
+        }
+    }
+
+    if (rmdir(path) == -1)
+	    die("rmdir");
+    closedir(dir);
+}
+
 void rm_cgroup(char *name) {
 	char cgpath[PATH_MAX];
     snprintf(cgpath, sizeof(cgpath), "%s/%s/%s", CGROUP_ROOT, CGROUP_NAME, name);
-	if (rmdir(cgpath) == -1)
-		die("rmdir");
+	rm_cgroup_internal(cgpath);
 }
 
 void set_frozen_cgroup(char *name, int frozen) {
