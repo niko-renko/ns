@@ -91,13 +91,13 @@ static void clone_init(int cgroup, const char *name) {
 	execl("/sbin/init", "init", (char *)NULL);
 }
 
-static void cmd_new(int out, char *name) {
+static void cmd_new(int out, char *name, char *image_name) {
 	char instances[PATH_MAX];
    	snprintf(instances, PATH_MAX, "%s/instances", ROOT);
 	char rootfs[PATH_MAX];
 	snprintf(rootfs, PATH_MAX, "%s/rootfs/%s", ROOT, name);
 	char image[PATH_MAX];
-	snprintf(image, PATH_MAX, "%s/images/%s", ROOT, "image.tar");
+	snprintf(image, PATH_MAX, "%s/images/%s", ROOT, image_name);
 
 	if (file_contains(instances, name)) {
 		write(out, NEXIST, strlen(NEXIST));
@@ -205,12 +205,13 @@ static void accept_cmd(int out, char *line, int n) {
 	if (nl) *nl = '\0';
 	char *cmd = strtok(line, " ");
 	char *arg = strtok(NULL, " ");
+	char *arg2 = strtok(NULL, " ");
 
 	if (!cmd)
 		return;
 
 	if (strcmp(cmd, "new") == 0)
-		cmd_new(out, arg);
+		cmd_new(out, arg, arg2);
 	if (strcmp(cmd, "rm") == 0)
 		cmd_rm(out, arg);
 	if (strcmp(cmd, "run") == 0)
