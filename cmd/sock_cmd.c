@@ -24,8 +24,6 @@
 #include "../set/set.h"
 #include "../state/state.h"
 
-#define SOCK_PATH "/run/initns.sock"
-
 void cmd(int, int);
 
 static void *sock_cmd(void *arg) {

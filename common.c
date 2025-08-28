@@ -22,7 +22,7 @@
 
 void die(const char *msg) {
 	perror(msg);
-	// exit(1);
+	exit(1);
 }
 
 void thread_die(const char *msg) {
