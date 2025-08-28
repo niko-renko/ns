@@ -31,6 +31,7 @@
 
 static char *OK = "ok\n";
 static char *NEXIST = "nonexistent\n";
+static char *SYNTAX = "syntax\n";
 
 static void clone_tar(const char *tar, const char *dest) {
 	pid_t pid = fork();
@@ -99,7 +100,7 @@ static void cmd_new(int out, char *name, char *image_name) {
 	char image[PATH_MAX];
 	snprintf(image, PATH_MAX, "%s/images/%s", ROOT, image_name);
 
-	if (file_contains(instances, name)) {
+	if (file_contains(instances, name) || access(image, F_OK) != 0) {
 		write(out, NEXIST, strlen(NEXIST));
 		return;
 	}
@@ -207,11 +208,16 @@ static void accept_cmd(int out, char *line, int n) {
 	char *arg = strtok(NULL, " ");
 	char *arg2 = strtok(NULL, " ");
 
-	if (!cmd)
+	if (!cmd || !arg) {
+		write(out, SYNTAX, strlen(SYNTAX));
 		return;
+	}
 
-	if (strcmp(cmd, "new") == 0)
-		cmd_new(out, arg, arg2);
+	if (strcmp(cmd, "new") == 0 && arg2)
+		if (arg2)
+			cmd_new(out, arg, arg2);
+		else
+			write(out, SYNTAX, strlen(SYNTAX));
 	if (strcmp(cmd, "rm") == 0)
 		cmd_rm(out, arg);
 	if (strcmp(cmd, "run") == 0)
