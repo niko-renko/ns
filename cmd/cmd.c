@@ -208,22 +208,20 @@ static void accept_cmd(int out, char *line, int n) {
 	char *arg = strtok(NULL, " ");
 	char *arg2 = strtok(NULL, " ");
 
-	if (!cmd || !arg) {
-		write(out, SYNTAX, strlen(SYNTAX));
-		return;
-	}
+	if (!cmd || !arg)
+		goto syntax;
 
 	if (strcmp(cmd, "new") == 0 && arg2)
-		if (arg2)
-			cmd_new(out, arg, arg2);
-		else
-			write(out, SYNTAX, strlen(SYNTAX));
+		return cmd_new(out, arg, arg2);
 	if (strcmp(cmd, "rm") == 0)
-		cmd_rm(out, arg);
+		return cmd_rm(out, arg);
 	if (strcmp(cmd, "run") == 0)
-		cmd_run(out, arg);
+		return cmd_run(out, arg);
 	if (strcmp(cmd, "ls") == 0)
-		cmd_ls(out, arg);
+		return cmd_ls(out, arg);
+
+syntax:
+	write(out, SYNTAX, strlen(SYNTAX));
 }
 
 void cmd(int in, int out) {
