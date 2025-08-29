@@ -1,33 +1,32 @@
-#include <stdio.h>
+#include <dirent.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <limits.h>
+#include <linux/input.h>
+#include <pthread.h>
 #include <stdlib.h>
 #include <string.h>
-#include <pthread.h>
 #include <sys/inotify.h>
 #include <unistd.h>
-#include <errno.h>
-#include <limits.h>
-#include <fcntl.h>
-#include <linux/input.h>
-#include <dirent.h>
 
-#include "../common.h"
-#include "../state/state.h"
-#include "../ctl/ctl.h"
 #include "../cgroup/cgroup.h"
+#include "../common.h"
+#include "../ctl/ctl.h"
+#include "../state/state.h"
 
 struct seq_listener_args {
     State *state;
     char device_path[PATH_MAX];
 };
 
-void on_ctl(){
+void on_ctl() {
     start_ctl();
 
     State *state = get_state();
-	pthread_mutex_lock(&state->lock);
+    pthread_mutex_lock(&state->lock);
     if (state->instance[0] != '\0')
         set_frozen_cgroup(state->instance, 1);
-	pthread_mutex_unlock(&state->lock);
+    pthread_mutex_unlock(&state->lock);
 }
 
 static void *seq_listener(void *arg) {

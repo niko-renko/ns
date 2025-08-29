@@ -1,14 +1,13 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <dirent.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <limits.h>
+#include <linux/input.h>
 #include <pthread.h>
+#include <stdio.h>
+#include <string.h>
 #include <sys/inotify.h>
 #include <unistd.h>
-#include <errno.h>
-#include <limits.h>
-#include <fcntl.h>
-#include <linux/input.h>
-#include <dirent.h>
 
 #include "../common.h"
 #include "../state/state.h"
@@ -16,11 +15,12 @@
 #define INPUT_DIR "/dev/input"
 #define EVENT_PREFIX "event"
 
-static void spawn_seq_listener(char *);
+void spawn_seq_listener(char *);
 
 static int is_kbd(const char *path) {
     int fd = open(path, O_RDONLY | O_NONBLOCK);
-    if (fd < 0) return 0;
+    if (fd < 0)
+        return 0;
 
     unsigned long evbit[(EV_MAX + 7) / 8] = {0};
     unsigned long keybit[(KEY_MAX + 7) / 8] = {0};
@@ -43,8 +43,10 @@ static int is_kbd(const char *path) {
 
     int count = 0;
     for (int code = 1; code <= 255; code++) {
-        if (keybit[code / 8] & (1 << (code % 8))) count++;
-        if (count > 15) break;
+        if (keybit[code / 8] & (1 << (code % 8)))
+            count++;
+        if (count > 15)
+            break;
     }
 
     close(fd);
@@ -64,13 +66,15 @@ static int is_event_device(const char *name) {
 
 static void scan_existing_devices(void) {
     DIR *dir = opendir(INPUT_DIR);
-    if (!dir) return;
+    if (!dir)
+        return;
 
     struct dirent *entry;
     while ((entry = readdir(dir)) != NULL) {
         if (is_event_device(entry->d_name)) {
             char fullpath[PATH_MAX];
-            snprintf(fullpath, sizeof(fullpath), "%s/%s", INPUT_DIR, entry->d_name);
+            snprintf(fullpath, sizeof(fullpath), "%s/%s", INPUT_DIR,
+                     entry->d_name);
             on_device_added(fullpath);
         }
     }
@@ -83,7 +87,8 @@ static void *kbd(void *arg) {
     set_state(state);
 
     int inotify_fd = inotify_init1(IN_NONBLOCK);
-    if (inotify_fd < 0) return NULL;
+    if (inotify_fd < 0)
+        return NULL;
 
     int wd = inotify_add_watch(inotify_fd, INPUT_DIR, IN_CREATE);
     if (wd < 0) {
@@ -93,8 +98,7 @@ static void *kbd(void *arg) {
 
     scan_existing_devices();
 
-    char buf[4096]
-        __attribute__ ((aligned(__alignof__(struct inotify_event))));
+    char buf[4096] __attribute__((aligned(__alignof__(struct inotify_event))));
     ssize_t len;
 
     while (1) {
@@ -103,18 +107,20 @@ static void *kbd(void *arg) {
             if (errno == EAGAIN || errno == EWOULDBLOCK) {
                 usleep(200000);
                 continue;
-            } else break;
+            } else
+                break;
         }
         if (len == 0) {
             usleep(200000);
             continue;
         }
 
-        for (char *ptr = buf; ptr < buf + len; ) {
-            struct inotify_event *event = (struct inotify_event *) ptr;
+        for (char *ptr = buf; ptr < buf + len;) {
+            struct inotify_event *event = (struct inotify_event *)ptr;
             if (is_event_device(event->name)) {
                 char fullpath[PATH_MAX];
-                snprintf(fullpath, sizeof(fullpath), "%s/%s", INPUT_DIR, event->name);
+                snprintf(fullpath, sizeof(fullpath), "%s/%s", INPUT_DIR,
+                         event->name);
                 if (event->mask & IN_CREATE)
                     on_device_added(fullpath);
             }

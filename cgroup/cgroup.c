@@ -1,24 +1,22 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <string.h>
-#include <errno.h>
-#include <signal.h>
-#include <pthread.h>
-#include <limits.h>
 #include <dirent.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <limits.h>
+#include <pthread.h>
+#include <stdio.h>
+#include <string.h>
+#include <unistd.h>
 
 #include <linux/input.h>
-#include <linux/vt.h>
 #include <linux/kd.h>
 #include <linux/sched.h>
+#include <linux/vt.h>
 
 #include <sys/mount.h>
-#include <sys/syscall.h>
-#include <sys/stat.h>
-#include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
+#include <sys/syscall.h>
+#include <sys/types.h>
 #include <sys/un.h>
 #include <sys/wait.h>
 
@@ -26,25 +24,26 @@
 #include "cgroup.h"
 
 void init_cgroup(void) {
-	char cgpath[PATH_MAX];
+    char cgpath[PATH_MAX];
 
-	if (mount("cgroup", CGROUP_ROOT, "cgroup2", 0, NULL) < 0 && errno != EBUSY)
-		die("cgroup");
+    if (mount("cgroup", CGROUP_ROOT, "cgroup2", 0, NULL) < 0 && errno != EBUSY)
+        die("cgroup");
 
     snprintf(cgpath, sizeof(cgpath), "%s/%s", CGROUP_ROOT, CGROUP_NAME);
-	if (mkdir(cgpath, 0755) == -1 && errno != EEXIST)
-		die("mkdir");
+    if (mkdir(cgpath, 0755) == -1 && errno != EEXIST)
+        die("mkdir");
 }
 
 int new_cgroup(char *name) {
-	char cgpath[PATH_MAX];
-    snprintf(cgpath, sizeof(cgpath), "%s/%s/%s", CGROUP_ROOT, CGROUP_NAME, name);
-	if (mkdir(cgpath, 0755) == -1)
-		die("mkdir");
-	int fd = open(cgpath, O_DIRECTORY);
-	if (fd < 0)
-		die("cgroup open");
-	return fd;
+    char cgpath[PATH_MAX];
+    snprintf(cgpath, sizeof(cgpath), "%s/%s/%s", CGROUP_ROOT, CGROUP_NAME,
+             name);
+    if (mkdir(cgpath, 0755) == -1)
+        die("mkdir");
+    int fd = open(cgpath, O_DIRECTORY);
+    if (fd < 0)
+        die("cgroup open");
+    return fd;
 }
 
 static void rm_poll(char *path) {
@@ -52,9 +51,9 @@ static void rm_poll(char *path) {
         if (rmdir(path) == 0)
             break;
         if (errno == EBUSY)
-	    continue;
-	else
-	    break;
+            continue;
+        else
+            break;
         usleep(1000);
     }
 }
@@ -87,30 +86,33 @@ static void rm_cgroup_internal(char *path) {
 }
 
 void rm_cgroup(char *name) {
-	char cgpath[PATH_MAX];
-	snprintf(cgpath, sizeof(cgpath), "%s/%s/%s", CGROUP_ROOT, CGROUP_NAME, name);
-	rm_cgroup_internal(cgpath);
+    char cgpath[PATH_MAX];
+    snprintf(cgpath, sizeof(cgpath), "%s/%s/%s", CGROUP_ROOT, CGROUP_NAME,
+             name);
+    rm_cgroup_internal(cgpath);
 }
 
 void set_frozen_cgroup(char *name, int frozen) {
-	char freeze_path[PATH_MAX];
-	char *frozen_str = frozen ? "1" : "0";
-    snprintf(freeze_path, sizeof(freeze_path), "%s/%s/%s/cgroup.freeze", CGROUP_ROOT, CGROUP_NAME, name);
-	int fd = open(freeze_path, O_WRONLY);
-	if (fd < 0)
-		die("cgroup.freeze open");
-	if (write(fd, frozen_str, 1) != 1)
-		die("freeze write");
-	close(fd);
+    char freeze_path[PATH_MAX];
+    char *frozen_str = frozen ? "1" : "0";
+    snprintf(freeze_path, sizeof(freeze_path), "%s/%s/%s/cgroup.freeze",
+             CGROUP_ROOT, CGROUP_NAME, name);
+    int fd = open(freeze_path, O_WRONLY);
+    if (fd < 0)
+        die("cgroup.freeze open");
+    if (write(fd, frozen_str, 1) != 1)
+        die("freeze write");
+    close(fd);
 }
 
 void kill_cgroup(char *name) {
-	char kill_path[PATH_MAX];
-    snprintf(kill_path, sizeof(kill_path), "%s/%s/%s/cgroup.kill", CGROUP_ROOT, CGROUP_NAME, name);
-	int fd = open(kill_path, O_WRONLY);
-	if (fd < 0)
-		die("cgroup.kill open");
-	if (write(fd, "1", 1) != 1)
-		die("kill write");
-	close(fd);
+    char kill_path[PATH_MAX];
+    snprintf(kill_path, sizeof(kill_path), "%s/%s/%s/cgroup.kill", CGROUP_ROOT,
+             CGROUP_NAME, name);
+    int fd = open(kill_path, O_WRONLY);
+    if (fd < 0)
+        die("cgroup.kill open");
+    if (write(fd, "1", 1) != 1)
+        die("kill write");
+    close(fd);
 }
