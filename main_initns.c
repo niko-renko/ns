@@ -31,13 +31,12 @@ int main(int argc, char *argv[]) {
     while ((n = read(fd, buf, sizeof(buf))) > 0) {
         for (ssize_t i = 0; i < n; i++) {
             write(STDOUT_FILENO, &buf[i], 1);
-            if (buf[i] == '\n') {
-                close(fd);
-                return 0;
-            }
+            if (buf[i] == '\n' && buf[i + 1] == '\n')
+                goto out;
         }
     }
 
+out:
     close(fd);
     return 0;
 }

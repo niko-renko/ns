@@ -174,15 +174,20 @@ static void cmd_ls(int out, char *type) {
 			die("images opendir");
 
     	struct dirent *de;
+		int first = 1;
     	while ((de = readdir(dir)) != NULL) {
+            if (!first)
+    	    	write(out, "\n", 1);
+
+            first = 0;
     	    if (strcmp(de->d_name, ".") == 0 || strcmp(de->d_name, "..") == 0)
     	        continue;
 
     	    write(out, de->d_name, strlen(de->d_name));
-    	    write(out, "\n", 1);
     	}
 
     	closedir(dir);
+		return;
 	}
 	if (strcmp(type, "instance") == 0) {
 		int n;
@@ -197,7 +202,10 @@ static void cmd_ls(int out, char *type) {
 		while ((n = read(in, buf, sizeof(buf))) > 0)
 			write(out, buf, n);
 		close(in);
+		return;
 	}
+
+	write(out, SYNTAX, strlen(SYNTAX));
 }
 
 static void accept_cmd(int out, char *line, int n) {
@@ -207,26 +215,39 @@ static void accept_cmd(int out, char *line, int n) {
 	char *cmd = strtok(line, " ");
 	char *arg = strtok(NULL, " ");
 	char *arg2 = strtok(NULL, " ");
+	int valid = 0;
 
 	if (!cmd || !arg)
 		goto syntax;
 
-	if (strcmp(cmd, "new") == 0 && arg2)
-		return cmd_new(out, arg, arg2);
-	if (strcmp(cmd, "rm") == 0)
-		return cmd_rm(out, arg);
-	if (strcmp(cmd, "run") == 0)
-		return cmd_run(out, arg);
-	if (strcmp(cmd, "ls") == 0)
-		return cmd_ls(out, arg);
+	if (strcmp(cmd, "new") == 0 && arg2) {
+		cmd_new(out, arg, arg2);
+		valid = 1;
+	}
+	if (strcmp(cmd, "rm") == 0) {
+		cmd_rm(out, arg);
+		valid = 1;
+	}
+	if (strcmp(cmd, "run") == 0) {
+		cmd_run(out, arg);
+		valid = 1;
+	}
+	if (strcmp(cmd, "ls") == 0) {
+		cmd_ls(out, arg);
+		valid = 1;
+	}
 
 syntax:
-	write(out, SYNTAX, strlen(SYNTAX));
+	if (!valid)
+		write(out, SYNTAX, strlen(SYNTAX));
+
+	write(out, "\n\n", 2);
+	fsync(out);
 }
 
 void cmd(int in, int out) {
 	char buf[256];
-    int n;
+	int n;
 
 	while ((n = read(in, buf, sizeof(buf) - 1)) > 0)
         accept_cmd(out, buf, n);
