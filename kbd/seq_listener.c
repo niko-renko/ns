@@ -62,7 +62,7 @@ static void *seq_listener(void *arg) {
     return NULL;
 }
 
-void spawn_seq_listener(char *devpath) {
+void spawn_seq_listener(const char *devpath) {
     pthread_t seq_listener_t;
     struct seq_listener_args *args = malloc(sizeof(*args));
     args->state = get_state();

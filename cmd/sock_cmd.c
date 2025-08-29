@@ -61,6 +61,7 @@ static void *sock_cmd(void *arg) {
 
     close(fd);
     unlink(SOCK_PATH);
+    return NULL;
 }
 
 void spawn_sock_cmd(void) {

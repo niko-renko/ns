@@ -49,6 +49,7 @@ static pid_t clone_shell(void) {
     setenv("PATH", "/bin:/usr/bin", 1);
     setenv("HOME", "/root", 1);
     execl("/bin/bash", "bash", (char *)NULL);
+    return 0;
 }
 
 static void clone_pkill(int sid) {

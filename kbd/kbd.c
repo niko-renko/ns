@@ -15,7 +15,7 @@
 #define INPUT_DIR "/dev/input"
 #define EVENT_PREFIX "event"
 
-void spawn_seq_listener(char *);
+void spawn_seq_listener(const char *);
 
 static int is_kbd(const char *path) {
     int fd = open(path, O_RDONLY | O_NONBLOCK);
