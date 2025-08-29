@@ -27,7 +27,7 @@
 #include "../state/state.h"
 
 static char *OK = "ok\n";
-static char *NEXIST = "nonexistent\n";
+static char *ERR = "error\n";
 static char *SYNTAX = "syntax\n";
 
 static void clone_tar(const char *tar, const char *dest) {
@@ -100,7 +100,7 @@ static void cmd_new(int out, char *name, char *image_name) {
     snprintf(image, PATH_MAX, "%s/images/%s", ROOT, image_name);
 
     if (file_contains(instances, name) || access(image, F_OK) != 0) {
-        write(out, NEXIST, strlen(NEXIST));
+        write(out, ERR, strlen(ERR));
         return;
     }
 
@@ -119,7 +119,7 @@ static void cmd_rm(int out, char *name) {
     snprintf(rootfs, sizeof(rootfs), "%s/rootfs/%s", ROOT, name);
 
     if (!file_contains(instances, name)) {
-        write(out, NEXIST, strlen(NEXIST));
+        write(out, ERR, strlen(ERR));
         return;
     }
 
@@ -133,7 +133,7 @@ static void cmd_run(int out, char *name) {
     snprintf(instances, PATH_MAX, "%s/instances", ROOT);
 
     if (!file_contains(instances, name)) {
-        write(out, NEXIST, strlen(NEXIST));
+        write(out, ERR, strlen(ERR));
         return;
     }
 
@@ -207,6 +207,29 @@ static void cmd_ls(int out, char *type) {
     write(out, SYNTAX, strlen(SYNTAX));
 }
 
+static void cmd_stop(int out, char *name) {
+    char instances[PATH_MAX];
+    snprintf(instances, PATH_MAX, "%s/instances", ROOT);
+
+    if (!file_contains(instances, name)) {
+        write(out, ERR, strlen(ERR));
+        return;
+    }
+
+    State *state = get_state();
+    pthread_mutex_lock(&state->lock);
+    if (strcmp(name, state->instance) != 0) {
+        write(out, ERR, strlen(ERR));
+    	pthread_mutex_unlock(&state->lock);
+	return;
+    }
+    kill_cgroup(state->instance);
+    rm_cgroup(state->instance);
+    state->instance[0] = '\0';
+    pthread_mutex_unlock(&state->lock);
+    write(out, OK, strlen(OK));
+}
+
 static void accept_cmd(int out, char *line, int n) {
     line[n] = '\0';
     char *nl = strchr(line, '\n');
@@ -230,6 +253,10 @@ static void accept_cmd(int out, char *line, int n) {
     }
     if (strcmp(cmd, "run") == 0) {
         cmd_run(out, arg);
+        valid = 1;
+    }
+    if (strcmp(cmd, "stop") == 0) {
+        cmd_stop(out, arg);
         valid = 1;
     }
     if (strcmp(cmd, "ls") == 0) {
