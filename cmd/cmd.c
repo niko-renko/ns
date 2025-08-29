@@ -108,7 +108,6 @@ static void cmd_new(int out, char *name, char *image_name) {
     mkdir(rootfs, 0755);
     clone_tar(image, rootfs);
     sync();
-
     write(out, OK, strlen(OK));
 }
 
@@ -125,6 +124,7 @@ static void cmd_rm(int out, char *name) {
 
     clone_rm(rootfs);
     file_remove(instances, name);
+    sync();
     write(out, OK, strlen(OK));
 }
 
@@ -149,6 +149,7 @@ static void cmd_run(int out, char *name) {
     }
     // Another instance is running
     if (state->instance[0] != '\0') {
+    	sync();
         kill_cgroup(state->instance);
         rm_cgroup(state->instance);
     }
@@ -223,6 +224,7 @@ static void cmd_stop(int out, char *name) {
     	pthread_mutex_unlock(&state->lock);
 	return;
     }
+    sync();
     kill_cgroup(state->instance);
     rm_cgroup(state->instance);
     state->instance[0] = '\0';
@@ -279,3 +281,4 @@ void cmd(int in, int out) {
     while ((n = read(in, buf, sizeof(buf) - 1)) > 0)
         accept_cmd(out, buf, n);
 }
+
