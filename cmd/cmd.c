@@ -176,13 +176,12 @@ static void cmd_ls(int out, char *type) {
         struct dirent *de;
         int first = 1;
         while ((de = readdir(dir)) != NULL) {
-            if (!first)
-                write(out, "\n", 1);
-
-            first = 0;
             if (strcmp(de->d_name, ".") == 0 || strcmp(de->d_name, "..") == 0)
                 continue;
 
+            if (!first)
+                write(out, "\n", 1);
+            first = 0;
             write(out, de->d_name, strlen(de->d_name));
         }
 
