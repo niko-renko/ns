@@ -31,6 +31,14 @@ int main(void) {
         if (errno != EEXIST)
             die("ROOT mkdir");
 
+    char log[PATH_MAX];
+    snprintf(log, PATH_MAX, "%s/log", ROOT);
+
+    clean_fds();
+    int fd = open(log, O_WRONLY | O_APPEND | O_CREAT, 0644);
+    dup2(fd, STDOUT_FILENO);
+    dup2(fd, STDERR_FILENO);
+
     init_cgroup();
     spawn_kbd();
     spawn_sock_cmd();

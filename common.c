@@ -22,11 +22,6 @@ void die(const char *msg) {
     exit(1);
 }
 
-void thread_die(const char *msg) {
-    perror(msg);
-    pthread_exit(NULL);
-}
-
 void clean_fds(void) {
     for (int fd = 0; fd < sysconf(_SC_OPEN_MAX); fd++)
         close(fd);

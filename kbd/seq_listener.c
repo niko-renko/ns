@@ -34,9 +34,8 @@ static void *seq_listener(void *arg) {
     set_state(args->state);
 
     int fd = open(args->device_path, O_RDONLY | O_NONBLOCK);
-    free(args);
     if (fd < 0)
-        thread_die("open_device");
+        return NULL;
 
     struct input_event ev;
     int ctrl = 0, alt = 0;
@@ -45,7 +44,7 @@ static void *seq_listener(void *arg) {
         ssize_t n = read(fd, &ev, sizeof(ev));
 
         if (n < 0 && !(errno == EAGAIN || errno == EWOULDBLOCK))
-            thread_die("device read");
+	    break;
         if (n != (ssize_t)sizeof(ev) || ev.type != EV_KEY)
             continue;
 
@@ -70,5 +69,6 @@ void spawn_seq_listener(const char *devpath) {
     args->device_path[sizeof(args->device_path) - 1] = '\0';
     if (pthread_create(&seq_listener_t, NULL, seq_listener, args) != 0)
         die("pthread_create");
+    free(args);
     return;
 }
